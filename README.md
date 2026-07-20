@@ -48,13 +48,15 @@ browser's IndexedDB, **on that one device only**:
 
 ## Camera barcode scanning
 
-Barcode scanning uses the browser's built-in `BarcodeDetector` API, which
-currently works in Chrome/Edge on Android and desktop, but **not in Safari on
-iPhone**. On unsupported browsers, tapping "Scan barcode" quietly falls back
-to the manual-entry form instead of failing silently — pantry items can
-always be added by hand either way. Barcode lookups pull from Open Food
-Facts, a free public product database — it won't have every item, especially
-smaller or local brands.
+Uses **html5-qrcode** (pinned at `2.3.8` via unpkg) — the same library that's
+proven reliable on iPhone/Safari in the warehouse Toolkit, rather than the
+native `BarcodeDetector` API that Safari doesn't support. It tries to pick
+the rear camera by label first, and falls back to a generic
+`facingMode: 'environment'` request if that fails. If the library itself
+can't load (e.g. no internet on first visit, before it's cached), tapping
+"Scan barcode" falls back to the manual-entry form instead of failing
+silently. Barcode lookups pull from Open Food Facts, a free public product
+database — it won't have every item, especially smaller or local brands.
 
 ## Adding features later
 

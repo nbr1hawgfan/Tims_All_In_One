@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(10,40,50,0.5); display: none;
@@ -20,6 +21,8 @@
   .qty-stepper { display: flex; align-items: center; gap: 10px; }
   .qty-stepper button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 1.1rem; font-weight: 700; cursor: pointer; color: var(--primary-dark); }
   .qty-stepper .qty-num { font-family: var(--font-mono); font-size: 1.1rem; min-width: 28px; text-align: center; }
+  #reader { width: 100%; border-radius: var(--radius-md); overflow: hidden; margin-bottom: 12px; background: #000; }
+  #reader video { border-radius: var(--radius-md); }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -43,7 +46,7 @@
   <div class="modal-box">
     <h3>Scan a barcode</h3>
     <div class="scan-status" id="scan-status">Point your camera at the barcode</div>
-    <video id="scan-video" class="scan-preview" playsinline muted></video>
+    <div id="reader"></div>
     <button class="btn secondary block" id="scan-cancel-btn">Cancel</button>
   </div>
 </div>
@@ -161,55 +164,80 @@
     refresh();
   });
 
-  // ---------- Barcode scanning ----------
-  let scanStream = null;
-  let scanLoopHandle = null;
+  // ---------- Barcode scanning (html5-qrcode — proven reliable on iPhone/Safari) ----------
+  let html5QrCode = null;
 
   document.getElementById('scan-btn').addEventListener('click', startScan);
-  document.getElementById('scan-cancel-btn').addEventListener('click', stopScan);
+  document.getElementById('scan-cancel-btn').addEventListener('click', () => stopScan(true));
+
+  function scanFormats() {
+    if (typeof Html5QrcodeSupportedFormats === 'undefined') return undefined;
+    return [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.CODE_93,
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.CODABAR,
+    ];
+  }
+
+  function scanConfig() {
+    return { fps: 10, qrbox: { width: 260, height: 140 }, formatsToSupport: scanFormats() };
+  }
+
+  async function onScanSuccess(decodedText) {
+    const value = String(decodedText || '').trim();
+    if (!value) return;
+    try { navigator.vibrate && navigator.vibrate(70); } catch (e) {}
+    const statusEl = document.getElementById('scan-status');
+    statusEl.textContent = 'Found it — looking up product…';
+    stopScan(false);
+    await handleBarcodeFound(value);
+  }
 
   async function startScan() {
     const statusEl = document.getElementById('scan-status');
-    if (!('BarcodeDetector' in window)) {
-      toolkitToast('Camera scanning isn\'t supported in this browser — add the item manually instead.', { danger: true, duration: 3500 });
+    if (typeof Html5Qrcode === 'undefined') {
+      toolkitToast('Scanner library failed to load — check your connection, or add the item manually.', { danger: true, duration: 3500 });
       openItemModal();
       return;
     }
     scanModal.classList.add('show');
-    statusEl.textContent = 'Point your camera at the barcode';
+    statusEl.textContent = 'Starting camera…';
+    document.getElementById('reader').innerHTML = '';
+    html5QrCode = new Html5Qrcode('reader');
+    const config = scanConfig();
     try {
-      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      const video = document.getElementById('scan-video');
-      video.srcObject = scanStream;
-      await video.play();
-      const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
-      const loop = async () => {
-        if (!scanStream) return;
-        try {
-          const codes = await detector.detect(video);
-          if (codes.length > 0) {
-            const barcode = codes[0].rawValue;
-            statusEl.textContent = 'Found it — looking up product…';
-            await handleBarcodeFound(barcode);
-            return;
-          }
-        } catch (e) { /* detection hiccup, keep trying */ }
-        scanLoopHandle = requestAnimationFrame(loop);
-      };
-      scanLoopHandle = requestAnimationFrame(loop);
-    } catch (e) {
-      statusEl.textContent = 'Camera access was blocked — check your browser permissions.';
+      const devices = await Html5Qrcode.getCameras();
+      if (!devices || !devices.length) throw new Error('No camera found');
+      const back = devices.find((d) => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1];
+      statusEl.textContent = 'Point your camera at the barcode';
+      await html5QrCode.start(back.id, config, onScanSuccess, () => {});
+    } catch (err) {
+      try {
+        statusEl.textContent = 'Point your camera at the barcode';
+        await html5QrCode.start({ facingMode: 'environment' }, config, onScanSuccess, () => {});
+      } catch (err2) {
+        statusEl.textContent = 'Camera access was blocked — check your browser permissions, or add the item manually.';
+      }
     }
   }
 
-  function stopScan() {
-    if (scanLoopHandle) cancelAnimationFrame(scanLoopHandle);
-    if (scanStream) { scanStream.getTracks().forEach((t) => t.stop()); scanStream = null; }
-    scanModal.classList.remove('show');
+  function stopScan(hide) {
+    if (html5QrCode) {
+      const inst = html5QrCode;
+      html5QrCode = null;
+      try { inst.stop().then(() => inst.clear()).catch(() => {}); } catch (e) {}
+    }
+    if (hide) scanModal.classList.remove('show');
   }
 
   async function handleBarcodeFound(barcode) {
-    stopScan();
     pendingBarcode = barcode;
     pendingImage = null;
     let name = '';
@@ -226,6 +254,7 @@
       }
     } catch (e) { /* offline or lookup failed — fall back to manual entry */ }
 
+    scanModal.classList.remove('show');
     openItemModal();
     document.getElementById('item-name').value = name;
     document.getElementById('item-brand').value = brand;

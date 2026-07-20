@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weight &amp; Body Tracker — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .metric-box { background: var(--primary-wash); border-radius: var(--radius-md); padding: 14px; text-align:center; }
+  .metric-box .num { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; color: var(--primary-dark); }
+  .metric-box .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Weight &amp; Body Tracker</h1></div>
+</header>
+
+<main class="shell">
+  <div class="card">
+    <div class="field-row">
+      <div>
+        <label for="weight">Weight (lb)</label>
+        <input type="number" id="weight" inputmode="decimal" placeholder="e.g. 185">
+      </div>
+      <div>
+        <label for="height">Height (in)</label>
+        <input type="number" id="height" inputmode="decimal" placeholder="e.g. 70">
+      </div>
+    </div>
+    <label for="bodyfat">Body fat % (optional — skip if unknown)</label>
+    <input type="number" id="bodyfat" inputmode="decimal" placeholder="e.g. 22">
+    <label for="note">Note (optional)</label>
+    <input type="text" id="note" placeholder="e.g. morning, after workout">
+    <button class="btn block" id="log-btn">Log today's entry</button>
+  </div>
+
+  <div class="metric-grid">
+    <div class="metric-box">
+      <div class="num" id="cur-bmi">—</div>
+      <div class="lbl" id="cur-bmi-label">BMI</div>
+    </div>
+    <div class="metric-box">
+      <div class="num" id="cur-change">—</div>
+      <div class="lbl">Change since first log</div>
+    </div>
+  </div>
+
+  <div class="shelf-label" style="margin-top:20px;">History</div>
+  <div class="row-list" id="history-list"></div>
+</main>
+
+<script src="../js/db.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const weightEl = document.getElementById('weight');
+  const heightEl = document.getElementById('height');
+  const bodyfatEl = document.getElementById('bodyfat');
+  const noteEl = document.getElementById('note');
+
+  function computeBmi(weightLb, heightIn) {
+    if (!weightLb || !heightIn) return null;
+    return (weightLb / (heightIn * heightIn)) * 703;
+  }
+
+  function bmiCategory(bmi) {
+    if (bmi < 18.5) return { text: 'Underweight', cls: 'accent' };
+    if (bmi < 25) return { text: 'Healthy range', cls: 'success' };
+    if (bmi < 30) return { text: 'Overweight', cls: 'accent' };
+    return { text: 'Obesity range', cls: 'danger' };
+  }
+
+  async function loadEntries() {
+    const all = await dbGetAll('health');
+    return all.sort((a, b) => b.date - a.date);
+  }
+
+  async function refresh() {
+    const entries = await loadEntries();
+    const listEl = document.getElementById('history-list');
+    listEl.innerHTML = '';
+
+    if (entries.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⚖️</div><p>No entries yet.</p><p>Log your first weigh-in above.</p></div>`;
+      document.getElementById('cur-bmi').textContent = '—';
+      document.getElementById('cur-bmi-label').textContent = 'BMI';
+      document.getElementById('cur-change').textContent = '—';
+      return;
+    }
+
+    const latest = entries[0];
+    const first = entries[entries.length - 1];
+    const bmi = computeBmi(latest.weightLb, latest.heightIn);
+    if (bmi) {
+      document.getElementById('cur-bmi').textContent = bmi.toFixed(1);
+      document.getElementById('cur-bmi-label').textContent = bmiCategory(bmi).text;
+    }
+    const change = latest.weightLb - first.weightLb;
+    const changeEl = document.getElementById('cur-change');
+    changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(1) + ' lb';
+
+    entries.forEach((entry) => {
+      const entryBmi = computeBmi(entry.weightLb, entry.heightIn);
+      const row = document.createElement('div');
+      row.className = 'row-item';
+      row.innerHTML = `
+        <div class="row-main">
+          <div class="row-title">${entry.weightLb} lb${entry.bodyFatPct ? ' · ' + entry.bodyFatPct + '% BF' : ''}</div>
+          <div class="row-sub">${toolkitFormatDate(entry.date)}${entryBmi ? ' · BMI ' + entryBmi.toFixed(1) : ''}${entry.note ? ' · ' + toolkitEscapeHtml(entry.note) : ''}</div>
+        </div>
+        <button class="icon-btn danger" aria-label="Delete entry" data-id="${entry.id}">✕</button>
+      `;
+      row.querySelector('button').addEventListener('click', async () => {
+        await dbDelete('health', entry.id);
+        toolkitToast('Entry removed');
+        refresh();
+      });
+      listEl.appendChild(row);
+    });
+  }
+
+  document.getElementById('log-btn').addEventListener('click', async () => {
+    const weightLb = parseFloat(weightEl.value);
+    const heightIn = parseFloat(heightEl.value) || null;
+    const bodyFatPct = parseFloat(bodyfatEl.value) || null;
+    if (!weightLb) {
+      toolkitToast('Enter a weight to log', { danger: true });
+      return;
+    }
+    await dbPut('health', {
+      id: toolkitId(),
+      date: Date.now(),
+      weightLb, heightIn, bodyFatPct,
+      note: noteEl.value.trim(),
+    });
+    noteEl.value = '';
+    toolkitToast('Entry logged');
+    refresh();
+  });
+
+  refresh();
+</script>
+</body>
+</html>

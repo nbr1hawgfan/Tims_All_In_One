@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit Converter — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .mode-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .mode-toggle button {
+    flex: 1; padding: 10px 0; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-family: var(--font-display); font-weight: 700; cursor: pointer;
+  }
+  .mode-toggle button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .convert-row { display: flex; align-items: flex-end; gap: 10px; }
+  .convert-row > div { flex: 1; }
+  .swap-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--primary-wash); color: var(--primary-dark); font-size: 1.1rem;
+    cursor: pointer; margin-bottom: 14px;
+  }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Unit Converter</h1></div>
+</header>
+
+<main class="shell">
+  <div class="mode-toggle">
+    <button id="mode-weight" class="active">Weight</button>
+    <button id="mode-length">Length</button>
+  </div>
+
+  <div class="card">
+    <div class="convert-row">
+      <div>
+        <label for="from-val">From</label>
+        <input type="number" id="from-val" inputmode="decimal" value="1">
+        <select id="from-unit"></select>
+      </div>
+      <button class="swap-btn" id="swap-btn" aria-label="Swap units">⇄</button>
+      <div>
+        <label for="to-val">To</label>
+        <input type="text" id="to-val" readonly>
+        <select id="to-unit"></select>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  const WEIGHT_UNITS = {
+    'mg': 0.001, 'g': 1, 'kg': 1000,
+    'oz': 28.3495, 'lb': 453.592, 'stone': 6350.29, 'ton (US)': 907185,
+  };
+  const LENGTH_UNITS = {
+    'mm': 0.001, 'cm': 0.01, 'm': 1, 'km': 1000,
+    'in': 0.0254, 'ft': 0.3048, 'yd': 0.9144, 'mi': 1609.34,
+  };
+
+  let currentUnits = WEIGHT_UNITS;
+  let currentBase = 'weight';
+
+  const fromVal = document.getElementById('from-val');
+  const toVal = document.getElementById('to-val');
+  const fromUnit = document.getElementById('from-unit');
+  const toUnit = document.getElementById('to-unit');
+
+  function populateSelects(defaultFrom, defaultTo) {
+    fromUnit.innerHTML = '';
+    toUnit.innerHTML = '';
+    Object.keys(currentUnits).forEach((u) => {
+      fromUnit.appendChild(new Option(u, u));
+      toUnit.appendChild(new Option(u, u));
+    });
+    fromUnit.value = defaultFrom;
+    toUnit.value = defaultTo;
+  }
+
+  function recalc() {
+    const val = parseFloat(fromVal.value);
+    if (isNaN(val)) { toVal.value = ''; return; }
+    const baseValue = val * currentUnits[fromUnit.value];
+    const result = baseValue / currentUnits[toUnit.value];
+    toVal.value = Number(result.toPrecision(8)).toString();
+  }
+
+  document.getElementById('mode-weight').addEventListener('click', (e) => {
+    currentUnits = WEIGHT_UNITS; currentBase = 'weight';
+    e.target.classList.add('active');
+    document.getElementById('mode-length').classList.remove('active');
+    populateSelects('lb', 'kg');
+    recalc();
+  });
+  document.getElementById('mode-length').addEventListener('click', (e) => {
+    currentUnits = LENGTH_UNITS; currentBase = 'length';
+    e.target.classList.add('active');
+    document.getElementById('mode-weight').classList.remove('active');
+    populateSelects('ft', 'm');
+    recalc();
+  });
+
+  document.getElementById('swap-btn').addEventListener('click', () => {
+    const f = fromUnit.value;
+    fromUnit.value = toUnit.value;
+    toUnit.value = f;
+    recalc();
+  });
+
+  [fromVal, fromUnit, toUnit].forEach((el) => el.addEventListener('input', recalc));
+
+  populateSelects('lb', 'kg');
+  recalc();
+</script>
+</body>
+</html>

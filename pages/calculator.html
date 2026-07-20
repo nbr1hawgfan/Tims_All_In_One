@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculator — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .calc-card { max-width: 380px; margin: 0 auto; }
+  .calc-display {
+    background: var(--primary-dark);
+    color: #fff;
+    border-radius: var(--radius-md);
+    padding: 20px 18px;
+    text-align: right;
+    margin-bottom: 14px;
+  }
+  .calc-display .prev { font-size: 0.85rem; opacity: 0.65; min-height: 1.1em; font-family: var(--font-mono); }
+  .calc-display .current { font-size: 2.2rem; font-family: var(--font-mono); font-weight: 600; word-break: break-all; }
+  .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .calc-btn {
+    padding: 16px 0;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .calc-btn:hover { background: var(--surface-sunken); }
+  .calc-btn.op { background: var(--primary-wash); color: var(--primary-dark); }
+  .calc-btn.op:hover { background: #d6ebef; }
+  .calc-btn.equals { background: var(--primary); color: #fff; grid-row: span 2; height: 100%; }
+  .calc-btn.equals:hover { background: var(--primary-dark); }
+  .calc-btn.wide { grid-column: span 2; }
+  .calc-btn.clear { color: var(--danger); }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Calculator</h1></div>
+</header>
+
+<main class="shell">
+  <div class="card calc-card">
+    <div class="calc-display">
+      <div class="prev" id="calc-prev">&nbsp;</div>
+      <div class="current" id="calc-current">0</div>
+    </div>
+    <div class="calc-grid">
+      <button class="calc-btn clear" data-action="clear">C</button>
+      <button class="calc-btn" data-action="sign">±</button>
+      <button class="calc-btn" data-action="percent">%</button>
+      <button class="calc-btn op" data-op="÷">÷</button>
+
+      <button class="calc-btn" data-num="7">7</button>
+      <button class="calc-btn" data-num="8">8</button>
+      <button class="calc-btn" data-num="9">9</button>
+      <button class="calc-btn op" data-op="×">×</button>
+
+      <button class="calc-btn" data-num="4">4</button>
+      <button class="calc-btn" data-num="5">5</button>
+      <button class="calc-btn" data-num="6">6</button>
+      <button class="calc-btn op" data-op="−">−</button>
+
+      <button class="calc-btn" data-num="1">1</button>
+      <button class="calc-btn" data-num="2">2</button>
+      <button class="calc-btn" data-num="3">3</button>
+      <button class="calc-btn op" data-op="+">+</button>
+
+      <button class="calc-btn wide" data-num="0">0</button>
+      <button class="calc-btn" data-action="decimal">.</button>
+      <button class="calc-btn equals" data-action="equals">=</button>
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  const currentEl = document.getElementById('calc-current');
+  const prevEl = document.getElementById('calc-prev');
+  let current = '0';
+  let previousValue = null;
+  let pendingOp = null;
+  let justEvaluated = false;
+
+  function render() {
+    currentEl.textContent = current;
+    prevEl.textContent = previousValue !== null && pendingOp ? `${formatNum(previousValue)} ${pendingOp}` : '\u00A0';
+  }
+
+  function formatNum(n) {
+    if (!isFinite(n)) return 'Error';
+    return Number(n.toPrecision(12)).toString();
+  }
+
+  function apply(a, b, op) {
+    switch (op) {
+      case '+': return a + b;
+      case '−': return a - b;
+      case '×': return a * b;
+      case '÷': return b === 0 ? Infinity : a / b;
+      default: return b;
+    }
+  }
+
+  document.querySelectorAll('[data-num]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const n = btn.dataset.num;
+      if (justEvaluated) { current = '0'; justEvaluated = false; }
+      if (current === '0') current = n;
+      else current += n;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-op]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const op = btn.dataset.op;
+      if (pendingOp && previousValue !== null && !justEvaluated) {
+        previousValue = apply(previousValue, parseFloat(current), pendingOp);
+        current = formatNum(previousValue);
+      } else {
+        previousValue = parseFloat(current);
+      }
+      pendingOp = op;
+      justEvaluated = false;
+      current = '0';
+      render();
+    });
+  });
+
+  document.querySelector('[data-action="equals"]').addEventListener('click', () => {
+    if (pendingOp && previousValue !== null) {
+      const result = apply(previousValue, parseFloat(current), pendingOp);
+      current = formatNum(result);
+      previousValue = null;
+      pendingOp = null;
+      justEvaluated = true;
+      render();
+    }
+  });
+
+  document.querySelector('[data-action="clear"]').addEventListener('click', () => {
+    current = '0'; previousValue = null; pendingOp = null; justEvaluated = false;
+    render();
+  });
+
+  document.querySelector('[data-action="sign"]').addEventListener('click', () => {
+    current = formatNum(parseFloat(current) * -1);
+    render();
+  });
+
+  document.querySelector('[data-action="percent"]').addEventListener('click', () => {
+    current = formatNum(parseFloat(current) / 100);
+    render();
+  });
+
+  document.querySelector('[data-action="decimal"]').addEventListener('click', () => {
+    if (justEvaluated) { current = '0'; justEvaluated = false; }
+    if (!current.includes('.')) current += '.';
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>

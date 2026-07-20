@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pantry Scanner — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(10,40,50,0.5); display: none;
+    align-items: flex-start; justify-content: center; z-index: 50; padding: 20px 0; overflow-y: auto;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; width: 92%; max-width: 480px; }
+  .low-badge { background: var(--danger-wash); color: var(--danger); }
+  .scan-status { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; }
+  .qty-stepper { display: flex; align-items: center; gap: 10px; }
+  .qty-stepper button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 1.1rem; font-weight: 700; cursor: pointer; color: var(--primary-dark); }
+  .qty-stepper .qty-num { font-family: var(--font-mono); font-size: 1.1rem; min-width: 28px; text-align: center; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Pantry Scanner</h1></div>
+</header>
+
+<main class="shell">
+  <div class="btn-row" style="margin-bottom:18px;">
+    <button class="btn" id="scan-btn" style="flex:1;">📷 Scan barcode</button>
+    <button class="btn secondary" id="manual-btn" style="flex:1;">+ Add manually</button>
+  </div>
+
+  <div class="row-list" id="pantry-list"></div>
+</main>
+
+<!-- Camera scan modal -->
+<div class="modal-overlay" id="scan-modal">
+  <div class="modal-box">
+    <h3>Scan a barcode</h3>
+    <div class="scan-status" id="scan-status">Point your camera at the barcode</div>
+    <video id="scan-video" class="scan-preview" playsinline muted></video>
+    <button class="btn secondary block" id="scan-cancel-btn">Cancel</button>
+  </div>
+</div>
+
+<!-- Add/edit item modal -->
+<div class="modal-overlay" id="item-modal">
+  <div class="modal-box">
+    <h3 id="item-modal-title">Add pantry item</h3>
+    <div id="item-photo-wrap" style="display:none; margin-bottom:12px;">
+      <img id="item-photo" style="width:64px; height:64px; border-radius:10px; object-fit:cover;">
+    </div>
+    <label for="item-name">Item name</label>
+    <input type="text" id="item-name" placeholder="e.g. Peanut butter">
+    <label for="item-brand">Brand (optional)</label>
+    <input type="text" id="item-brand" placeholder="e.g. Jif">
+    <label for="item-category">Category</label>
+    <select id="item-category">
+      <option>Canned goods</option>
+      <option>Dry goods &amp; grains</option>
+      <option>Baking</option>
+      <option>Condiments &amp; sauces</option>
+      <option>Snacks</option>
+      <option>Beverages</option>
+      <option>Frozen</option>
+      <option>Household</option>
+      <option>Other</option>
+    </select>
+    <label>Quantity on hand</label>
+    <div class="qty-stepper" style="margin-bottom:14px;">
+      <button type="button" id="qty-minus">−</button>
+      <div class="qty-num" id="qty-num">1</div>
+      <button type="button" id="qty-plus">+</button>
+    </div>
+    <div class="toggle-row" style="display:flex; align-items:center; justify-content:space-between; padding: 6px 0 16px;">
+      <span>Mark as running low</span>
+      <input type="checkbox" id="item-lowstock">
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" id="item-cancel-btn" style="flex:1;">Cancel</button>
+      <button class="btn danger" id="item-delete-btn" style="display:none;">Delete</button>
+      <button class="btn" id="item-save-btn" style="flex:1;">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/db.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  let editingId = null;
+  let pendingBarcode = null;
+  let pendingImage = null;
+  let qty = 1;
+
+  const itemModal = document.getElementById('item-modal');
+  const scanModal = document.getElementById('scan-modal');
+
+  function updateQtyDisplay() { document.getElementById('qty-num').textContent = qty; }
+  document.getElementById('qty-minus').addEventListener('click', () => { qty = Math.max(0, qty - 1); updateQtyDisplay(); });
+  document.getElementById('qty-plus').addEventListener('click', () => { qty += 1; updateQtyDisplay(); });
+
+  function openItemModal(item = null) {
+    editingId = item ? item.id : null;
+    pendingBarcode = item ? item.barcode : pendingBarcode;
+    pendingImage = item ? item.imageDataUrl : pendingImage;
+    document.getElementById('item-modal-title').textContent = item ? 'Edit pantry item' : 'Add pantry item';
+    document.getElementById('item-name').value = item ? item.name : '';
+    document.getElementById('item-brand').value = item ? (item.brand || '') : '';
+    document.getElementById('item-category').value = item ? item.category : 'Canned goods';
+    qty = item ? item.qty : 1;
+    updateQtyDisplay();
+    document.getElementById('item-lowstock').checked = item ? !!item.lowStock : false;
+    document.getElementById('item-delete-btn').style.display = item ? '' : 'none';
+    const photoWrap = document.getElementById('item-photo-wrap');
+    if (pendingImage) {
+      document.getElementById('item-photo').src = pendingImage;
+      photoWrap.style.display = '';
+    } else {
+      photoWrap.style.display = 'none';
+    }
+    itemModal.classList.add('show');
+  }
+  function closeItemModal() {
+    itemModal.classList.remove('show');
+    pendingBarcode = null;
+    pendingImage = null;
+  }
+
+  document.getElementById('manual-btn').addEventListener('click', () => openItemModal());
+  document.getElementById('item-cancel-btn').addEventListener('click', closeItemModal);
+  itemModal.addEventListener('click', (e) => { if (e.target === itemModal) closeItemModal(); });
+
+  document.getElementById('item-save-btn').addEventListener('click', async () => {
+    const name = document.getElementById('item-name').value.trim();
+    if (!name) { toolkitToast('Enter an item name', { danger: true }); return; }
+    const existing = editingId ? await dbGet('pantry', editingId) : null;
+    await dbPut('pantry', {
+      id: editingId || toolkitId(),
+      name,
+      brand: document.getElementById('item-brand').value.trim(),
+      category: document.getElementById('item-category').value,
+      qty,
+      lowStock: document.getElementById('item-lowstock').checked,
+      barcode: pendingBarcode || (existing ? existing.barcode : null),
+      imageDataUrl: pendingImage || (existing ? existing.imageDataUrl : null),
+      addedAt: existing ? existing.addedAt : Date.now(),
+    });
+    closeItemModal();
+    toolkitToast('Pantry updated');
+    refresh();
+  });
+
+  document.getElementById('item-delete-btn').addEventListener('click', async () => {
+    if (editingId) { await dbDelete('pantry', editingId); toolkitToast('Item removed'); }
+    closeItemModal();
+    refresh();
+  });
+
+  // ---------- Barcode scanning ----------
+  let scanStream = null;
+  let scanLoopHandle = null;
+
+  document.getElementById('scan-btn').addEventListener('click', startScan);
+  document.getElementById('scan-cancel-btn').addEventListener('click', stopScan);
+
+  async function startScan() {
+    const statusEl = document.getElementById('scan-status');
+    if (!('BarcodeDetector' in window)) {
+      toolkitToast('Camera scanning isn\'t supported in this browser — add the item manually instead.', { danger: true, duration: 3500 });
+      openItemModal();
+      return;
+    }
+    scanModal.classList.add('show');
+    statusEl.textContent = 'Point your camera at the barcode';
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const video = document.getElementById('scan-video');
+      video.srcObject = scanStream;
+      await video.play();
+      const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+      const loop = async () => {
+        if (!scanStream) return;
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0) {
+            const barcode = codes[0].rawValue;
+            statusEl.textContent = 'Found it — looking up product…';
+            await handleBarcodeFound(barcode);
+            return;
+          }
+        } catch (e) { /* detection hiccup, keep trying */ }
+        scanLoopHandle = requestAnimationFrame(loop);
+      };
+      scanLoopHandle = requestAnimationFrame(loop);
+    } catch (e) {
+      statusEl.textContent = 'Camera access was blocked — check your browser permissions.';
+    }
+  }
+
+  function stopScan() {
+    if (scanLoopHandle) cancelAnimationFrame(scanLoopHandle);
+    if (scanStream) { scanStream.getTracks().forEach((t) => t.stop()); scanStream = null; }
+    scanModal.classList.remove('show');
+  }
+
+  async function handleBarcodeFound(barcode) {
+    stopScan();
+    pendingBarcode = barcode;
+    pendingImage = null;
+    let name = '';
+    let brand = '';
+    try {
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json`);
+      const data = await res.json();
+      if (data.status === 1 && data.product) {
+        name = data.product.product_name || '';
+        brand = data.product.brands || '';
+        if (data.product.image_front_small_url) {
+          pendingImage = data.product.image_front_small_url;
+        }
+      }
+    } catch (e) { /* offline or lookup failed — fall back to manual entry */ }
+
+    openItemModal();
+    document.getElementById('item-name').value = name;
+    document.getElementById('item-brand').value = brand;
+    if (!name) {
+      toolkitToast('Product not found in the database — fill in the details manually');
+    }
+  }
+
+  // ---------- List rendering ----------
+  async function refresh() {
+    const items = (await dbGetAll('pantry')).sort((a, b) => {
+      if (!!a.lowStock !== !!b.lowStock) return a.lowStock ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    const listEl = document.getElementById('pantry-list');
+    listEl.innerHTML = '';
+    if (items.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🥫</div><p>Your pantry is empty.</p><p>Scan a barcode or add an item manually.</p></div>`;
+      return;
+    }
+    items.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'row-item';
+      row.innerHTML = `
+        ${item.imageDataUrl ? `<img class="row-thumb" src="${item.imageDataUrl}" alt="">` : `<div class="row-thumb" style="display:flex;align-items:center;justify-content:center;">🥫</div>`}
+        <div class="row-main">
+          <div class="row-title">${toolkitEscapeHtml(item.name)}</div>
+          <div class="row-sub">${item.brand ? toolkitEscapeHtml(item.brand) + ' · ' : ''}${item.category} · Qty ${item.qty}${item.lowStock ? ' · <span class="chip low-badge">Running low</span>' : ''}</div>
+        </div>
+        <button class="icon-btn" aria-label="Add to shopping list" data-add>🛒</button>
+        <button class="icon-btn" aria-label="Edit item" data-edit>✎</button>
+      `;
+      row.querySelector('[data-edit]').addEventListener('click', () => openItemModal(item));
+      row.querySelector('[data-add]').addEventListener('click', async () => {
+        await dbPut('shopping', {
+          id: toolkitId(),
+          name: item.name,
+          qty: 1,
+          note: item.brand || '',
+          checked: false,
+          addedAt: Date.now(),
+        });
+        toolkitToast(`Added "${item.name}" to shopping list`);
+      });
+      listEl.appendChild(row);
+    });
+  }
+
+  refresh();
+</script>
+</body>
+</html>

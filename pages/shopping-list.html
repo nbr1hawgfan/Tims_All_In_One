@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shopping List — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .add-row { display: flex; gap: 8px; margin-bottom: 18px; }
+  .add-row input { margin-bottom: 0; }
+  .add-row button { flex-shrink: 0; }
+  .row-item.checked { opacity: 0.55; }
+  .row-item.checked .row-title { text-decoration: line-through; }
+  .check-circle {
+    width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border);
+    flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; color: #fff;
+  }
+  .check-circle.checked { background: var(--success); border-color: var(--success); }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Shopping List</h1></div>
+</header>
+
+<main class="shell">
+  <div class="add-row">
+    <input type="text" id="new-item" placeholder="Add an item…">
+    <button class="btn" id="add-btn">Add</button>
+  </div>
+
+  <div class="row-list" id="shopping-list"></div>
+
+  <button class="btn secondary block" id="clear-checked-btn" style="margin-top:18px;">Clear checked items</button>
+</main>
+
+<script src="../js/db.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const newItemEl = document.getElementById('new-item');
+
+  async function addItem() {
+    const name = newItemEl.value.trim();
+    if (!name) return;
+    await dbPut('shopping', { id: toolkitId(), name, qty: 1, note: '', checked: false, addedAt: Date.now() });
+    newItemEl.value = '';
+    refresh();
+  }
+
+  document.getElementById('add-btn').addEventListener('click', addItem);
+  newItemEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
+
+  document.getElementById('clear-checked-btn').addEventListener('click', async () => {
+    const all = await dbGetAll('shopping');
+    const checked = all.filter((i) => i.checked);
+    if (checked.length === 0) { toolkitToast('Nothing checked off yet'); return; }
+    for (const item of checked) await dbDelete('shopping', item.id);
+    toolkitToast(`Cleared ${checked.length} item${checked.length > 1 ? 's' : ''}`);
+    refresh();
+  });
+
+  async function refresh() {
+    const items = (await dbGetAll('shopping')).sort((a, b) => {
+      if (a.checked !== b.checked) return a.checked ? 1 : -1;
+      return b.addedAt - a.addedAt;
+    });
+    const listEl = document.getElementById('shopping-list');
+    listEl.innerHTML = '';
+    if (items.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🛒</div><p>Your list is empty.</p><p>Add items above, or send them over from the Pantry.</p></div>`;
+      return;
+    }
+    items.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'row-item' + (item.checked ? ' checked' : '');
+      row.innerHTML = `
+        <div class="check-circle ${item.checked ? 'checked' : ''}" data-check>${item.checked ? '✓' : ''}</div>
+        <div class="row-main">
+          <div class="row-title">${toolkitEscapeHtml(item.name)}</div>
+          ${item.note ? `<div class="row-sub">${toolkitEscapeHtml(item.note)}</div>` : ''}
+        </div>
+        <button class="icon-btn danger" aria-label="Remove item" data-remove>✕</button>
+      `;
+      row.querySelector('[data-check]').addEventListener('click', async () => {
+        item.checked = !item.checked;
+        await dbPut('shopping', item);
+        refresh();
+      });
+      row.querySelector('[data-remove]').addEventListener('click', async () => {
+        await dbDelete('shopping', item.id);
+        refresh();
+      });
+      listEl.appendChild(row);
+    });
+  }
+
+  refresh();
+</script>
+</body>
+</html>

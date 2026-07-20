@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ID Cards — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .modal-overlay { position: fixed; inset: 0; background: rgba(10,40,50,0.5); display: none; align-items: flex-start; justify-content: center; z-index: 50; padding: 20px 0; overflow-y: auto; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; width: 92%; max-width: 480px; }
+  .card-thumb-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .card-thumb-row img { width: 100%; border-radius: 10px; border: 1px solid var(--border); }
+  .card-thumb-row > div { flex: 1; }
+  .photo-slot-label { font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: 4px; }
+  .card-item-photos { display: flex; gap: 8px; margin-top: 10px; }
+  .card-item-photos img { width: 70px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>ID Cards</h1></div>
+</header>
+
+<main class="shell">
+  <div id="lock-view" class="lock-screen">
+    <div class="lock-icon">🪪</div>
+    <h3 id="lock-title">Vault locked</h3>
+    <p class="helper-text" id="lock-sub" style="text-align:center;">Enter your vault passphrase to continue. This is the same passphrase used for Secure Logins.</p>
+    <input type="password" id="passphrase-input" placeholder="Passphrase" style="text-align:center;">
+    <button class="btn block" id="unlock-btn">Unlock</button>
+  </div>
+
+  <div id="cards-view" style="display:none;">
+    <p class="helper-text">Stored for your own reference only — not a legal document and not accepted as proof of insurance.</p>
+    <div class="btn-row" style="margin-bottom:18px;">
+      <button class="btn" id="new-card-btn" style="flex:1;">+ Add card</button>
+      <button class="btn secondary" id="lock-btn">Lock</button>
+    </div>
+    <div class="row-list" id="cards-list"></div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="card-modal">
+  <div class="modal-box">
+    <h3 id="card-modal-title">Add card</h3>
+    <label for="card-label">Label</label>
+    <input type="text" id="card-label" placeholder="e.g. Auto insurance, Health insurance">
+    <label for="card-issuer">Issuer / plan (optional)</label>
+    <input type="text" id="card-issuer" placeholder="e.g. State Farm, Blue Cross">
+
+    <div class="card-thumb-row">
+      <div>
+        <img id="front-preview" style="display:none;">
+        <label class="btn secondary block" style="text-align:center;">📷 Front photo
+          <input type="file" accept="image/*" capture="environment" id="front-input" style="display:none;">
+        </label>
+        <div class="photo-slot-label">Front</div>
+      </div>
+      <div>
+        <img id="back-preview" style="display:none;">
+        <label class="btn secondary block" style="text-align:center;">📷 Back photo
+          <input type="file" accept="image/*" capture="environment" id="back-input" style="display:none;">
+        </label>
+        <div class="photo-slot-label">Back</div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn secondary" id="card-cancel-btn" style="flex:1;">Cancel</button>
+      <button class="btn danger" id="card-delete-btn" style="display:none;">Delete</button>
+      <button class="btn" id="card-save-btn" style="flex:1;">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/db.js"></script>
+<script src="../js/app.js"></script>
+<script src="../js/secure.js"></script>
+<script>
+  let editingId = null;
+  let frontPhoto = null;
+  let backPhoto = null;
+
+  async function init() {
+    const setUp = await toolkitSecure.isSetUp();
+    if (!setUp) {
+      document.getElementById('lock-sub').textContent = 'Set up your vault from Secure Logins first — the same passphrase protects both.';
+      document.getElementById('unlock-btn').textContent = 'Go to Secure Logins';
+      document.getElementById('unlock-btn').onclick = () => { window.location.href = 'vault.html'; };
+    } else {
+      document.getElementById('unlock-btn').onclick = doUnlock;
+    }
+  }
+
+  async function doUnlock() {
+    const pass = document.getElementById('passphrase-input').value;
+    if (!pass) { toolkitToast('Enter your passphrase', { danger: true }); return; }
+    try {
+      await toolkitSecure.unlock(pass);
+      document.getElementById('passphrase-input').value = '';
+      showCards();
+    } catch (e) {
+      toolkitToast(e.message, { danger: true });
+    }
+  }
+
+  document.getElementById('lock-btn').addEventListener('click', () => {
+    toolkitSecure.lock();
+    document.getElementById('cards-view').style.display = 'none';
+    document.getElementById('lock-view').style.display = '';
+    init();
+  });
+
+  function showCards() {
+    document.getElementById('lock-view').style.display = 'none';
+    document.getElementById('cards-view').style.display = '';
+    refresh();
+  }
+
+  const cardModal = document.getElementById('card-modal');
+  function openCardModal(entry = null, decrypted = null) {
+    editingId = entry ? entry.id : null;
+    frontPhoto = decrypted ? decrypted.frontPhoto : null;
+    backPhoto = decrypted ? decrypted.backPhoto : null;
+    document.getElementById('card-modal-title').textContent = entry ? 'Edit card' : 'Add card';
+    document.getElementById('card-label').value = decrypted ? decrypted.label : '';
+    document.getElementById('card-issuer').value = decrypted ? decrypted.issuer : '';
+    updatePhotoSlot('front', frontPhoto);
+    updatePhotoSlot('back', backPhoto);
+    document.getElementById('card-delete-btn').style.display = entry ? '' : 'none';
+    cardModal.classList.add('show');
+  }
+  function closeCardModal() { cardModal.classList.remove('show'); }
+
+  function updatePhotoSlot(which, dataUrl) {
+    const img = document.getElementById(which + '-preview');
+    if (dataUrl) { img.src = dataUrl; img.style.display = ''; }
+    else { img.style.display = 'none'; }
+  }
+
+  document.getElementById('front-input').addEventListener('change', async () => {
+    const file = document.getElementById('front-input').files[0];
+    if (!file) return;
+    frontPhoto = await toolkitFileToResizedDataUrl(file, 1400, 0.85);
+    updatePhotoSlot('front', frontPhoto);
+  });
+  document.getElementById('back-input').addEventListener('change', async () => {
+    const file = document.getElementById('back-input').files[0];
+    if (!file) return;
+    backPhoto = await toolkitFileToResizedDataUrl(file, 1400, 0.85);
+    updatePhotoSlot('back', backPhoto);
+  });
+
+  document.getElementById('new-card-btn').addEventListener('click', () => openCardModal());
+  document.getElementById('card-cancel-btn').addEventListener('click', closeCardModal);
+  cardModal.addEventListener('click', (e) => { if (e.target === cardModal) closeCardModal(); });
+
+  document.getElementById('card-save-btn').addEventListener('click', async () => {
+    const label = document.getElementById('card-label').value.trim();
+    if (!label) { toolkitToast('Enter a label for this card', { danger: true }); return; }
+    if (!frontPhoto && !backPhoto) { toolkitToast('Add at least one photo', { danger: true }); return; }
+    const payload = {
+      label,
+      issuer: document.getElementById('card-issuer').value.trim(),
+      frontPhoto, backPhoto,
+    };
+    const enc = await toolkitSecure.encryptJson(payload);
+    const now = Date.now();
+    const existing = editingId ? await dbGet('vault_items', editingId) : null;
+    await dbPut('vault_items', {
+      id: editingId || toolkitId(),
+      kind: 'card',
+      cipherText: enc.cipherText,
+      iv: enc.iv,
+      createdAt: existing ? existing.createdAt : now,
+      updatedAt: now,
+    });
+    closeCardModal();
+    toolkitToast('Card saved');
+    refresh();
+  });
+
+  document.getElementById('card-delete-btn').addEventListener('click', async () => {
+    if (editingId) { await dbDelete('vault_items', editingId); toolkitToast('Card deleted'); }
+    closeCardModal();
+    refresh();
+  });
+
+  async function refresh() {
+    const all = (await dbGetAll('vault_items')).filter((r) => r.kind === 'card').sort((a, b) => b.updatedAt - a.updatedAt);
+    const listEl = document.getElementById('cards-list');
+    listEl.innerHTML = '';
+    if (all.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🪪</div><p>No cards saved yet.</p><p>Tap "Add card" to store a photo of your insurance card.</p></div>`;
+      return;
+    }
+    for (const record of all) {
+      let decrypted;
+      try { decrypted = await toolkitSecure.decryptJson(record); } catch { continue; }
+      const row = document.createElement('div');
+      row.className = 'card';
+      row.style.cursor = 'pointer';
+      row.innerHTML = `
+        <div class="row-title">${toolkitEscapeHtml(decrypted.label)}</div>
+        ${decrypted.issuer ? `<div class="row-sub">${toolkitEscapeHtml(decrypted.issuer)}</div>` : ''}
+        <div class="card-item-photos">
+          ${decrypted.frontPhoto ? `<img src="${decrypted.frontPhoto}" alt="Front">` : ''}
+          ${decrypted.backPhoto ? `<img src="${decrypted.backPhoto}" alt="Back">` : ''}
+        </div>
+      `;
+      row.addEventListener('click', () => openCardModal(record, decrypted));
+      listEl.appendChild(row);
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

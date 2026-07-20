@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Notes — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .photo-preview { max-width: 100%; border-radius: var(--radius-sm); margin-bottom: 12px; display: block; }
+  .note-card { cursor: pointer; }
+  .note-card .note-title { font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
+  .note-card .note-body { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .note-thumb-row { display: flex; gap: 12px; }
+  .note-thumb-row img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(10,40,50,0.5); display: none;
+    align-items: flex-start; justify-content: center; z-index: 50; padding: 20px 0; overflow-y: auto;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; width: 92%; max-width: 480px; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Notes</h1></div>
+</header>
+
+<main class="shell">
+  <button class="btn block" id="new-note-btn" style="margin-bottom:18px;">+ New note</button>
+  <div class="row-list" id="notes-list"></div>
+</main>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <label for="note-title">Title</label>
+    <input type="text" id="note-title" placeholder="Note title">
+    <label for="note-body">Note</label>
+    <textarea id="note-body" rows="5" placeholder="Write your note..."></textarea>
+
+    <img id="photo-preview" class="photo-preview" style="display:none;">
+    <div class="btn-row" style="margin-bottom:16px;">
+      <label class="btn secondary" style="flex:1; text-align:center;">
+        📷 Add photo
+        <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none;">
+      </label>
+      <button class="btn secondary" id="remove-photo-btn" style="display:none;">Remove photo</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn secondary" id="cancel-btn" style="flex:1;">Cancel</button>
+      <button class="btn danger" id="delete-btn" style="display:none;">Delete</button>
+      <button class="btn" id="save-btn" style="flex:1;">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/db.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  let editingId = null;
+  let currentPhoto = null;
+
+  const modal = document.getElementById('modal');
+  const titleEl = document.getElementById('note-title');
+  const bodyEl = document.getElementById('note-body');
+  const previewEl = document.getElementById('photo-preview');
+  const photoInput = document.getElementById('photo-input');
+
+  function openModal(note = null) {
+    editingId = note ? note.id : null;
+    titleEl.value = note ? note.title : '';
+    bodyEl.value = note ? note.body : '';
+    currentPhoto = note ? note.photoDataUrl : null;
+    updatePhotoPreview();
+    document.getElementById('delete-btn').style.display = note ? '' : 'none';
+    modal.classList.add('show');
+    titleEl.focus();
+  }
+
+  function closeModal() {
+    modal.classList.remove('show');
+  }
+
+  function updatePhotoPreview() {
+    if (currentPhoto) {
+      previewEl.src = currentPhoto;
+      previewEl.style.display = '';
+      document.getElementById('remove-photo-btn').style.display = '';
+    } else {
+      previewEl.style.display = 'none';
+      document.getElementById('remove-photo-btn').style.display = 'none';
+    }
+  }
+
+  photoInput.addEventListener('change', async () => {
+    const file = photoInput.files[0];
+    if (!file) return;
+    toolkitToast('Processing photo…');
+    currentPhoto = await toolkitFileToResizedDataUrl(file);
+    updatePhotoPreview();
+  });
+
+  document.getElementById('remove-photo-btn').addEventListener('click', () => {
+    currentPhoto = null;
+    photoInput.value = '';
+    updatePhotoPreview();
+  });
+
+  document.getElementById('new-note-btn').addEventListener('click', () => openModal());
+  document.getElementById('cancel-btn').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  document.getElementById('save-btn').addEventListener('click', async () => {
+    const title = titleEl.value.trim();
+    const body = bodyEl.value.trim();
+    if (!title && !body && !currentPhoto) {
+      toolkitToast('Add some content first', { danger: true });
+      return;
+    }
+    const now = Date.now();
+    await dbPut('notes', {
+      id: editingId || toolkitId(),
+      title: title || 'Untitled note',
+      body,
+      photoDataUrl: currentPhoto,
+      createdAt: editingId ? (await dbGet('notes', editingId)).createdAt : now,
+      updatedAt: now,
+    });
+    photoInput.value = '';
+    closeModal();
+    toolkitToast('Note saved');
+    refresh();
+  });
+
+  document.getElementById('delete-btn').addEventListener('click', async () => {
+    if (editingId) {
+      await dbDelete('notes', editingId);
+      toolkitToast('Note deleted');
+    }
+    closeModal();
+    refresh();
+  });
+
+  async function refresh() {
+    const notes = (await dbGetAll('notes')).sort((a, b) => b.updatedAt - a.updatedAt);
+    const listEl = document.getElementById('notes-list');
+    listEl.innerHTML = '';
+    if (notes.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><p>No notes yet.</p><p>Tap "New note" to add one.</p></div>`;
+      return;
+    }
+    notes.forEach((note) => {
+      const card = document.createElement('div');
+      card.className = 'card note-card';
+      card.innerHTML = `
+        <div class="note-thumb-row">
+          ${note.photoDataUrl ? `<img src="${note.photoDataUrl}" alt="">` : ''}
+          <div style="flex:1; min-width:0;">
+            <div class="note-title">${toolkitEscapeHtml(note.title)}</div>
+            <div class="note-body">${toolkitEscapeHtml(note.body)}</div>
+            <div class="row-sub" style="margin-top:6px;">${toolkitFormatDate(note.updatedAt)}</div>
+          </div>
+        </div>
+      `;
+      card.addEventListener('click', () => openModal(note));
+      listEl.appendChild(card);
+    });
+  }
+
+  refresh();
+</script>
+</body>
+</html>

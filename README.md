@@ -1,0 +1,65 @@
+# Personal Toolkit
+
+A personal-use PWA: pantry scanning → shopping list, calculators, notes with
+photos, a weight/BMI/body-fat tracker, and an encrypted vault for logins and
+insurance/ID cards. Built as a static site so it can host on GitHub Pages,
+same as your warehouse toolkit.
+
+## How data storage works (read this first)
+
+There is **no server or database** — GitHub Pages only serves files. All data
+(pantry items, notes, photos, health logs, vault entries) is stored in your
+browser's IndexedDB, **on that one device only**:
+
+- Nothing syncs between your phone and laptop unless you manually export/import.
+- Clearing your browser's site data, or uninstalling/reinstalling as a PWA in
+  some browsers, deletes everything. There's no cloud backup.
+- If you want cross-device sync later, that's a bigger step (a Supabase
+  backend, similar to what you've used for PTO/attendance) — happy to help
+  with that as a phase 2, but it's a different architecture, not a small add-on.
+
+## The Secure Vault (Logins + ID Cards)
+
+- Protected by **one passphrase** you set the first time you open Secure Logins.
+  The same passphrase unlocks ID Cards.
+- Entries are encrypted with AES-GCM, using a key derived from your passphrase
+  (PBKDF2, 210,000 iterations). The key only ever lives in memory for that
+  page load — it's never written to disk.
+- **There is no password reset.** If you forget the passphrase, the only
+  option is wiping the vault and starting over (there's a "wipe vault" link
+  for this). Nothing else in the app is affected.
+- ID Cards are for your own reference only — explicitly not a legal or
+  insurance-accepted document, just a way to have the info on hand.
+
+## Deploying to GitHub Pages
+
+1. Create a new repo on GitHub (e.g. `personal-toolkit`), public or private
+   (Pages works on private repos too, on paid plans — public is simplest).
+2. Upload everything in this folder to the repo root (keep the folder
+   structure: `css/`, `js/`, `pages/`, `icons/`, plus `index.html`,
+   `manifest.json`, `sw.js`).
+3. In the repo: **Settings → Pages → Source → Deploy from a branch**, pick
+   `main` and `/ (root)`, save.
+4. After a minute or two it'll be live at
+   `https://<your-username>.github.io/personal-toolkit/`.
+5. On your phone, open that URL in the browser and use "Add to Home Screen"
+   (iOS Safari) or the install prompt (Android Chrome) to get the app-icon,
+   full-screen experience.
+
+## Camera barcode scanning
+
+Barcode scanning uses the browser's built-in `BarcodeDetector` API, which
+currently works in Chrome/Edge on Android and desktop, but **not in Safari on
+iPhone**. On unsupported browsers, tapping "Scan barcode" quietly falls back
+to the manual-entry form instead of failing silently — pantry items can
+always be added by hand either way. Barcode lookups pull from Open Food
+Facts, a free public product database — it won't have every item, especially
+smaller or local brands.
+
+## Adding features later
+
+Each tool is a self-contained HTML page under `pages/`, sharing only three
+small files: `js/db.js` (storage), `js/app.js` (small helpers), and
+`js/secure.js` (vault encryption). That separation is deliberate — a new
+feature can be added as its own page without touching the others, so a bug
+in one tool can't take down the rest of the app.

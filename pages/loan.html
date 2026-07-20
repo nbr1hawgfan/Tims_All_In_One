@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loan Calculator — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Loan Calculator</h1></div>
+</header>
+
+<main class="shell">
+  <div class="card">
+    <label for="principal">Loan amount</label>
+    <input type="number" id="principal" inputmode="decimal" placeholder="e.g. 25000" min="0" step="0.01">
+
+    <div class="field-row">
+      <div>
+        <label for="rate">Interest rate (APR %)</label>
+        <input type="number" id="rate" inputmode="decimal" placeholder="e.g. 6.5" min="0" step="0.01">
+      </div>
+      <div>
+        <label for="term">Term (years)</label>
+        <input type="number" id="term" inputmode="numeric" placeholder="e.g. 5" min="0" step="1">
+      </div>
+    </div>
+  </div>
+
+  <div class="result-panel">
+    <div class="label">Monthly payment</div>
+    <div class="big-number" id="out-payment">$0.00</div>
+  </div>
+  <div class="card" id="summary-card" style="display:none;">
+    <div class="row-list">
+      <div class="row-item"><div class="row-main"><div class="row-title">Total paid</div></div><div class="mono" id="out-total-paid">$0.00</div></div>
+      <div class="row-item"><div class="row-main"><div class="row-title">Total interest</div></div><div class="mono" id="out-total-interest">$0.00</div></div>
+      <div class="row-item"><div class="row-main"><div class="row-title">Number of payments</div></div><div class="mono" id="out-num-payments">0</div></div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  const principalEl = document.getElementById('principal');
+  const rateEl = document.getElementById('rate');
+  const termEl = document.getElementById('term');
+
+  function currency(n) {
+    if (!isFinite(n)) n = 0;
+    return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function recalc() {
+    const P = parseFloat(principalEl.value) || 0;
+    const annualRate = parseFloat(rateEl.value) || 0;
+    const years = parseFloat(termEl.value) || 0;
+    const n = Math.round(years * 12);
+    const r = (annualRate / 100) / 12;
+
+    let payment = 0;
+    if (P > 0 && n > 0) {
+      payment = r === 0 ? P / n : (P * r) / (1 - Math.pow(1 + r, -n));
+    }
+
+    document.getElementById('out-payment').textContent = currency(payment);
+
+    const summaryCard = document.getElementById('summary-card');
+    if (P > 0 && n > 0) {
+      const totalPaid = payment * n;
+      const totalInterest = totalPaid - P;
+      document.getElementById('out-total-paid').textContent = currency(totalPaid);
+      document.getElementById('out-total-interest').textContent = currency(totalInterest);
+      document.getElementById('out-num-payments').textContent = n;
+      summaryCard.style.display = '';
+    } else {
+      summaryCard.style.display = 'none';
+    }
+  }
+
+  [principalEl, rateEl, termEl].forEach((el) => el.addEventListener('input', recalc));
+  recalc();
+</script>
+</body>
+</html>

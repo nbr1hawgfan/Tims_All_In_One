@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tip Calculator — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .tip-presets { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tip-presets button {
+    flex: 1; padding: 10px 0; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--surface);
+    font-weight: 700; font-family: var(--font-display); cursor: pointer;
+  }
+  .tip-presets button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .split-row { display: flex; align-items: center; gap: 12px; }
+  .split-row button {
+    width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--surface); font-size: 1.1rem; font-weight: 700; cursor: pointer; color: var(--primary-dark);
+  }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Tip Calculator</h1></div>
+</header>
+
+<main class="shell">
+  <div class="card">
+    <label for="bill">Bill amount</label>
+    <input type="number" id="bill" inputmode="decimal" placeholder="0.00" min="0" step="0.01">
+
+    <label>Tip percentage</label>
+    <div class="tip-presets">
+      <button data-pct="15">15%</button>
+      <button data-pct="18" class="active">18%</button>
+      <button data-pct="20">20%</button>
+      <button data-pct="25">25%</button>
+    </div>
+    <input type="number" id="custom-pct" inputmode="numeric" placeholder="Custom %" min="0" step="1">
+
+    <label>Split between</label>
+    <div class="split-row">
+      <button id="split-minus">−</button>
+      <div id="split-count" class="mono" style="font-size:1.1rem; min-width: 24px; text-align:center;">1</div>
+      <button id="split-plus">+</button>
+      <span class="helper-text" style="margin:0;">people</span>
+    </div>
+  </div>
+
+  <div class="result-panel">
+    <div class="label">Tip amount</div>
+    <div class="big-number" id="out-tip">$0.00</div>
+  </div>
+  <div class="result-panel">
+    <div class="label">Total (bill + tip)</div>
+    <div class="big-number" id="out-total">$0.00</div>
+  </div>
+  <div class="result-panel">
+    <div class="label">Per person</div>
+    <div class="big-number" id="out-per-person">$0.00</div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  const billEl = document.getElementById('bill');
+  const customPctEl = document.getElementById('custom-pct');
+  const presetBtns = document.querySelectorAll('.tip-presets button');
+  let splitCount = 1;
+  let activePct = 18;
+
+  function currency(n) {
+    if (!isFinite(n)) n = 0;
+    return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function recalc() {
+    const bill = parseFloat(billEl.value) || 0;
+    const pct = parseFloat(customPctEl.value) || activePct;
+    const tip = bill * (pct / 100);
+    const total = bill + tip;
+    document.getElementById('out-tip').textContent = currency(tip);
+    document.getElementById('out-total').textContent = currency(total);
+    document.getElementById('out-per-person').textContent = currency(total / splitCount);
+  }
+
+  presetBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      presetBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      activePct = parseFloat(btn.dataset.pct);
+      customPctEl.value = '';
+      recalc();
+    });
+  });
+
+  document.getElementById('split-minus').addEventListener('click', () => {
+    splitCount = Math.max(1, splitCount - 1);
+    document.getElementById('split-count').textContent = splitCount;
+    recalc();
+  });
+  document.getElementById('split-plus').addEventListener('click', () => {
+    splitCount += 1;
+    document.getElementById('split-count').textContent = splitCount;
+    recalc();
+  });
+
+  billEl.addEventListener('input', recalc);
+  customPctEl.addEventListener('input', recalc);
+  recalc();
+</script>
+</body>
+</html>

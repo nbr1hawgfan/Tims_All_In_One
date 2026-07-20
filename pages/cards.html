@@ -165,25 +165,42 @@
     const label = document.getElementById('card-label').value.trim();
     if (!label) { toolkitToast('Enter a label for this card', { danger: true }); return; }
     if (!frontPhoto && !backPhoto) { toolkitToast('Add at least one photo', { danger: true }); return; }
-    const payload = {
-      label,
-      issuer: document.getElementById('card-issuer').value.trim(),
-      frontPhoto, backPhoto,
-    };
-    const enc = await toolkitSecure.encryptJson(payload);
-    const now = Date.now();
-    const existing = editingId ? await dbGet('vault_items', editingId) : null;
-    await dbPut('vault_items', {
-      id: editingId || toolkitId(),
-      kind: 'card',
-      cipherText: enc.cipherText,
-      iv: enc.iv,
-      createdAt: existing ? existing.createdAt : now,
-      updatedAt: now,
-    });
-    closeCardModal();
-    toolkitToast('Card saved');
-    refresh();
+    if (!toolkitSecure.isUnlocked()) {
+      toolkitToast('Vault session timed out — please unlock again and retry', { danger: true, duration: 3500 });
+      closeCardModal();
+      document.getElementById('cards-view').style.display = 'none';
+      document.getElementById('lock-view').style.display = '';
+      init();
+      return;
+    }
+    const saveBtn = document.getElementById('card-save-btn');
+    saveBtn.disabled = true;
+    try {
+      const payload = {
+        label,
+        issuer: document.getElementById('card-issuer').value.trim(),
+        frontPhoto, backPhoto,
+      };
+      const enc = await toolkitSecure.encryptJson(payload);
+      const now = Date.now();
+      const existing = editingId ? await dbGet('vault_items', editingId) : null;
+      await dbPut('vault_items', {
+        id: editingId || toolkitId(),
+        kind: 'card',
+        cipherText: enc.cipherText,
+        iv: enc.iv,
+        createdAt: existing ? existing.createdAt : now,
+        updatedAt: now,
+      });
+      closeCardModal();
+      toolkitToast('Card saved');
+      refresh();
+    } catch (e) {
+      console.error('Card save failed:', e);
+      toolkitToast('Could not save the card: ' + e.message, { danger: true, duration: 4000 });
+    } finally {
+      saveBtn.disabled = false;
+    }
   });
 
   document.getElementById('card-delete-btn').addEventListener('click', async () => {

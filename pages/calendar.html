@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Perpetual Calendar — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .mode-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .mode-toggle button {
+    flex: 1; padding: 10px 0; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-family: var(--font-display); font-weight: 700; cursor: pointer;
+  }
+  .mode-toggle button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .day-name { font-size: 1.7rem; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Perpetual Calendar</h1></div>
+</header>
+
+<main class="shell">
+  <div class="mode-toggle">
+    <button id="mode-day" class="active">Day of the week</button>
+    <button id="mode-diff">Days between dates</button>
+  </div>
+
+  <!-- Day of week lookup -->
+  <div id="panel-day">
+    <div class="card">
+      <label for="lookup-date">Pick any date, past or future</label>
+      <input type="date" id="lookup-date">
+    </div>
+    <div class="result-panel">
+      <div class="label">Falls on a</div>
+      <div class="big-number day-name" id="out-day">—</div>
+      <div class="helper-text" id="out-relative" style="margin:6px 0 0;"></div>
+    </div>
+  </div>
+
+  <!-- Date difference -->
+  <div id="panel-diff" style="display:none;">
+    <div class="card">
+      <div class="field-row">
+        <div>
+          <label for="diff-start">From</label>
+          <input type="date" id="diff-start">
+        </div>
+        <div>
+          <label for="diff-end">To</label>
+          <input type="date" id="diff-end">
+        </div>
+      </div>
+    </div>
+    <div class="result-panel">
+      <div class="label">Difference</div>
+      <div class="big-number" id="out-diff">—</div>
+      <div class="helper-text" id="out-diff-detail" style="margin:6px 0 0;"></div>
+    </div>
+  </div>
+
+  <p class="helper-text" style="text-align:center; margin-top:18px;">
+    Uses your device's calendar math directly — works completely offline, any date.
+  </p>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  function parseLocalDate(str) {
+    // Parse a yyyy-mm-dd date input as a local date, not UTC, to avoid off-by-one issues.
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  // ---------- Mode toggle ----------
+  document.getElementById('mode-day').addEventListener('click', () => setMode('day'));
+  document.getElementById('mode-diff').addEventListener('click', () => setMode('diff'));
+  function setMode(mode) {
+    document.getElementById('mode-day').classList.toggle('active', mode === 'day');
+    document.getElementById('mode-diff').classList.toggle('active', mode === 'diff');
+    document.getElementById('panel-day').style.display = mode === 'day' ? '' : 'none';
+    document.getElementById('panel-diff').style.display = mode === 'diff' ? '' : 'none';
+  }
+
+  // ---------- Day of week ----------
+  const lookupDate = document.getElementById('lookup-date');
+  function recalcDay() {
+    if (!lookupDate.value) { document.getElementById('out-day').textContent = '—'; document.getElementById('out-relative').textContent = ''; return; }
+    const d = parseLocalDate(lookupDate.value);
+    document.getElementById('out-day').textContent = DAY_NAMES[d.getDay()];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    d.setHours(0,0,0,0);
+    const diffDays = Math.round((d - today) / 86400000);
+    let rel;
+    if (diffDays === 0) rel = 'That\'s today.';
+    else if (diffDays > 0) rel = `That's ${diffDays.toLocaleString()} day${diffDays === 1 ? '' : 's'} from today.`;
+    else rel = `That was ${Math.abs(diffDays).toLocaleString()} day${diffDays === -1 ? '' : 's'} ago.`;
+    document.getElementById('out-relative').textContent = rel;
+  }
+  lookupDate.addEventListener('input', recalcDay);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  lookupDate.value = todayStr;
+  recalcDay();
+
+  // ---------- Date difference ----------
+  const diffStart = document.getElementById('diff-start');
+  const diffEnd = document.getElementById('diff-end');
+  function recalcDiff() {
+    if (!diffStart.value || !diffEnd.value) { document.getElementById('out-diff').textContent = '—'; document.getElementById('out-diff-detail').textContent = ''; return; }
+    const a = parseLocalDate(diffStart.value);
+    const b = parseLocalDate(diffEnd.value);
+    const diffDays = Math.round((b - a) / 86400000);
+    const absDays = Math.abs(diffDays);
+    document.getElementById('out-diff').textContent = absDays.toLocaleString() + ' day' + (absDays === 1 ? '' : 's');
+    const years = Math.floor(absDays / 365.25);
+    const weeks = Math.floor(absDays / 7);
+    document.getElementById('out-diff-detail').textContent =
+      `≈ ${weeks.toLocaleString()} weeks, or ${years.toLocaleString()} year${years === 1 ? '' : 's'}` + (diffDays < 0 ? ' (end date is before start date)' : '');
+  }
+  diffStart.value = todayStr;
+  [diffStart, diffEnd].forEach((el) => el.addEventListener('input', recalcDiff));
+</script>
+</body>
+</html>

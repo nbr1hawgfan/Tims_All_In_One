@@ -73,7 +73,7 @@
     const listEl = document.getElementById('shopping-list');
     listEl.innerHTML = '';
     if (items.length === 0) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🛒</div><p>Your list is empty.</p><p>Add items above, or send them over from the Pantry.</p></div>`;
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🛒</div><p>Your list is empty.</p><p>Add items above, or mark a pantry item "running low" to send it here automatically.</p></div>`;
       return;
     }
     items.forEach((item) => {

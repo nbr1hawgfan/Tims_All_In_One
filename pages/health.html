@@ -36,6 +36,33 @@
     </div>
     <label for="bodyfat">Body fat % (optional — skip if unknown)</label>
     <input type="number" id="bodyfat" inputmode="decimal" placeholder="e.g. 22">
+
+    <div id="navy-toggle" style="margin: -6px 0 16px; font-size: 0.82rem; color: var(--primary); cursor: pointer; text-decoration: underline;">
+      Don't know your body fat %? Estimate it (Navy method)
+    </div>
+    <div id="navy-calc" style="display:none; background: var(--surface-sunken); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+      <div class="mode-toggle" style="display:flex; gap:8px; margin-bottom:12px;">
+        <button type="button" class="btn secondary" id="navy-sex-m" style="flex:1;">Male</button>
+        <button type="button" class="btn secondary" id="navy-sex-f" style="flex:1;">Female</button>
+      </div>
+      <div class="field-row">
+        <div>
+          <label for="navy-neck">Neck (in)</label>
+          <input type="number" id="navy-neck" inputmode="decimal" placeholder="e.g. 15.5">
+        </div>
+        <div>
+          <label for="navy-waist">Waist (in)</label>
+          <input type="number" id="navy-waist" inputmode="decimal" placeholder="e.g. 34">
+        </div>
+      </div>
+      <div id="navy-hip-wrap" style="display:none;">
+        <label for="navy-hip">Hip (in)</label>
+        <input type="number" id="navy-hip" inputmode="decimal" placeholder="e.g. 38">
+      </div>
+      <p class="helper-text" style="margin-bottom:10px;">Measure neck just below the larynx, waist at the navel, and (for the female formula) hips at the widest point.</p>
+      <button class="btn secondary block" type="button" id="navy-calc-btn">Calculate body fat %</button>
+    </div>
+
     <label for="note">Note (optional)</label>
     <input type="text" id="note" placeholder="e.g. morning, after workout">
     <button class="btn block" id="log-btn">Log today's entry</button>
@@ -63,6 +90,53 @@
   const heightEl = document.getElementById('height');
   const bodyfatEl = document.getElementById('bodyfat');
   const noteEl = document.getElementById('note');
+
+  // ---------- Navy method body fat % estimator ----------
+  let navySex = 'm';
+  document.getElementById('navy-toggle').addEventListener('click', () => {
+    const panel = document.getElementById('navy-calc');
+    panel.style.display = panel.style.display === 'none' ? '' : 'none';
+  });
+  function setNavySex(sex) {
+    navySex = sex;
+    document.getElementById('navy-sex-m').classList.toggle('secondary', sex !== 'm');
+    document.getElementById('navy-sex-f').classList.toggle('secondary', sex !== 'f');
+    document.getElementById('navy-sex-m').style.background = sex === 'm' ? 'var(--primary)' : '';
+    document.getElementById('navy-sex-m').style.color = sex === 'm' ? '#fff' : '';
+    document.getElementById('navy-sex-f').style.background = sex === 'f' ? 'var(--primary)' : '';
+    document.getElementById('navy-sex-f').style.color = sex === 'f' ? '#fff' : '';
+    document.getElementById('navy-hip-wrap').style.display = sex === 'f' ? '' : 'none';
+  }
+  document.getElementById('navy-sex-m').addEventListener('click', () => setNavySex('m'));
+  document.getElementById('navy-sex-f').addEventListener('click', () => setNavySex('f'));
+  setNavySex('m');
+
+  document.getElementById('navy-calc-btn').addEventListener('click', () => {
+    const heightIn = parseFloat(heightEl.value);
+    const neck = parseFloat(document.getElementById('navy-neck').value);
+    const waist = parseFloat(document.getElementById('navy-waist').value);
+    const hip = parseFloat(document.getElementById('navy-hip').value);
+
+    if (!heightIn) { toolkitToast('Enter your height above first', { danger: true }); return; }
+    if (!neck || !waist) { toolkitToast('Enter neck and waist measurements', { danger: true }); return; }
+    if (navySex === 'f' && !hip) { toolkitToast('Enter your hip measurement', { danger: true }); return; }
+
+    let pct;
+    if (navySex === 'm') {
+      if (waist <= neck) { toolkitToast('Waist should be larger than neck — check your measurements', { danger: true }); return; }
+      pct = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(heightIn)) - 450;
+    } else {
+      if (waist + hip <= neck) { toolkitToast('Check your measurements — waist + hip should exceed neck', { danger: true }); return; }
+      pct = 495 / (1.29579 - 0.35004 * Math.log10(waist + hip - neck) + 0.22100 * Math.log10(heightIn)) - 450;
+    }
+
+    if (!isFinite(pct) || pct <= 0 || pct > 70) {
+      toolkitToast('Those measurements gave an unusual result — double check them', { danger: true });
+      return;
+    }
+    bodyfatEl.value = pct.toFixed(1);
+    toolkitToast(`Estimated at ${pct.toFixed(1)}% — filled into the field above`);
+  });
 
   function computeBmi(weightLb, heightIn) {
     if (!weightLb || !heightIn) return null;

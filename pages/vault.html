@@ -148,26 +148,43 @@
   document.getElementById('login-save-btn').addEventListener('click', async () => {
     const site = document.getElementById('login-site').value.trim();
     if (!site) { toolkitToast('Enter a site or app name', { danger: true }); return; }
-    const payload = {
-      site,
-      username: document.getElementById('login-username').value.trim(),
-      password: document.getElementById('login-password').value,
-      notes: document.getElementById('login-notes').value.trim(),
-    };
-    const enc = await toolkitSecure.encryptJson(payload);
-    const now = Date.now();
-    const existing = editingId ? await dbGet('vault_items', editingId) : null;
-    await dbPut('vault_items', {
-      id: editingId || toolkitId(),
-      kind: 'login',
-      cipherText: enc.cipherText,
-      iv: enc.iv,
-      createdAt: existing ? existing.createdAt : now,
-      updatedAt: now,
-    });
-    closeLoginModal();
-    toolkitToast('Login saved');
-    refresh();
+    if (!toolkitSecure.isUnlocked()) {
+      toolkitToast('Vault session timed out — please unlock again and retry', { danger: true, duration: 3500 });
+      closeLoginModal();
+      document.getElementById('vault-view').style.display = 'none';
+      document.getElementById('lock-view').style.display = '';
+      init();
+      return;
+    }
+    const saveBtn = document.getElementById('login-save-btn');
+    saveBtn.disabled = true;
+    try {
+      const payload = {
+        site,
+        username: document.getElementById('login-username').value.trim(),
+        password: document.getElementById('login-password').value,
+        notes: document.getElementById('login-notes').value.trim(),
+      };
+      const enc = await toolkitSecure.encryptJson(payload);
+      const now = Date.now();
+      const existing = editingId ? await dbGet('vault_items', editingId) : null;
+      await dbPut('vault_items', {
+        id: editingId || toolkitId(),
+        kind: 'login',
+        cipherText: enc.cipherText,
+        iv: enc.iv,
+        createdAt: existing ? existing.createdAt : now,
+        updatedAt: now,
+      });
+      closeLoginModal();
+      toolkitToast('Login saved');
+      refresh();
+    } catch (e) {
+      console.error('Login save failed:', e);
+      toolkitToast('Could not save the login: ' + e.message, { danger: true, duration: 4000 });
+    } finally {
+      saveBtn.disabled = false;
+    }
   });
 
   document.getElementById('login-delete-btn').addEventListener('click', async () => {

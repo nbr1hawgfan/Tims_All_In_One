@@ -42,6 +42,12 @@ only:
   free geocoding to turn a typed city into coordinates
 - **Public Holidays** — [date.nager.at](https://date.nager.at)
 - **What's My IP** — ipapi.co, falling back to ipify.org if that's unreachable
+- **Distance & Travel Time** — Open-Meteo geocoding to resolve place names, then
+  [OSRM's public routing demo server](https://project-osrm.org) for driving
+  distance/time, with a locally-computed straight-line distance as a backup.
+  Note: OSRM's demo server is free and keyless but is a shared public
+  instance, not an SLA-backed service — if it's ever slow or down, the page
+  still shows straight-line distance.
 - **QR Code Generator** — fully offline/client-side, no API (the `qrcode` library, loaded from unpkg)
 - **Age Calculator** and **Perpetual Calendar** — pure date math, no API, fully offline
 

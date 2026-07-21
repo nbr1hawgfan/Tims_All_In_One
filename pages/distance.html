@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Distance &amp; Travel Time — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .stat-box { background: var(--primary-wash); border-radius: var(--radius-md); padding: 16px; text-align:center; }
+  .stat-box .num { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; color: var(--primary-dark); }
+  .stat-box .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Distance &amp; Travel Time</h1></div>
+</header>
+
+<main class="shell">
+  <div class="card">
+    <label for="from-place">From</label>
+    <input type="text" id="from-place" placeholder="e.g. Fort Smith, AR">
+    <label for="to-place">To</label>
+    <input type="text" id="to-place" placeholder="e.g. Arlington, TX">
+    <button class="btn block" id="calc-btn">Calculate</button>
+    <div class="helper-text" id="status" style="margin-top:10px; margin-bottom:0;"></div>
+  </div>
+
+  <div id="results" style="display:none;">
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="num" id="out-driving-miles">—</div>
+        <div class="lbl">Driving miles</div>
+      </div>
+      <div class="stat-box">
+        <div class="num" id="out-driving-time">—</div>
+        <div class="lbl">Driving time</div>
+      </div>
+    </div>
+    <div class="card" style="text-align:center;">
+      <div class="row-sub">Straight-line (as the crow flies)</div>
+      <div class="mono" style="font-size:1.05rem; font-weight:600; color:var(--primary-dark);" id="out-straight">—</div>
+    </div>
+    <p class="helper-text" id="matched-places" style="text-align:center;"></p>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  async function geocode(query) {
+    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1`);
+    const data = await res.json();
+    if (!data.results || data.results.length === 0) return null;
+    const p = data.results[0];
+    return {
+      lat: p.latitude,
+      lon: p.longitude,
+      label: [p.name, p.admin1, p.country_code].filter(Boolean).join(', '),
+    };
+  }
+
+  function haversineMiles(a, b) {
+    const R = 3958.8; // Earth radius in miles
+    const toRad = (d) => (d * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lon - a.lon);
+    const h = Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.asin(Math.sqrt(h));
+  }
+
+  function formatDuration(totalMinutes) {
+    const h = Math.floor(totalMinutes / 60);
+    const m = Math.round(totalMinutes % 60);
+    if (h === 0) return `${m} min`;
+    return `${h}h ${m}m`;
+  }
+
+  document.getElementById('calc-btn').addEventListener('click', async () => {
+    const fromQuery = document.getElementById('from-place').value.trim();
+    const toQuery = document.getElementById('to-place').value.trim();
+    const statusEl = document.getElementById('status');
+    const resultsEl = document.getElementById('results');
+    resultsEl.style.display = 'none';
+
+    if (!fromQuery || !toQuery) { toolkitToast('Enter both places', { danger: true }); return; }
+
+    statusEl.textContent = 'Finding those places…';
+    try {
+      const [from, to] = await Promise.all([geocode(fromQuery), geocode(toQuery)]);
+      if (!from || !to) {
+        statusEl.textContent = `Could not find ${!from ? '"' + fromQuery + '"' : '"' + toQuery + '"'} — try a different spelling, or add a state/country.`;
+        return;
+      }
+      document.getElementById('matched-places').textContent = `${from.label} → ${to.label}`;
+
+      const straightMiles = haversineMiles(from, to);
+      document.getElementById('out-straight').textContent = `${straightMiles.toLocaleString(undefined, { maximumFractionDigits: 0 })} mi`;
+
+      statusEl.textContent = 'Calculating driving route…';
+      try {
+        const routeRes = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`
+        );
+        const routeData = await routeRes.json();
+        if (routeData.code === 'Ok' && routeData.routes && routeData.routes[0]) {
+          const meters = routeData.routes[0].distance;
+          const seconds = routeData.routes[0].duration;
+          const miles = meters / 1609.34;
+          document.getElementById('out-driving-miles').textContent = miles.toLocaleString(undefined, { maximumFractionDigits: 0 });
+          document.getElementById('out-driving-time').textContent = formatDuration(seconds / 60);
+          statusEl.textContent = '';
+        } else {
+          throw new Error('no route');
+        }
+      } catch (e) {
+        document.getElementById('out-driving-miles').textContent = '—';
+        document.getElementById('out-driving-time').textContent = '—';
+        statusEl.textContent = 'Driving route unavailable right now — showing straight-line distance only.';
+      }
+
+      resultsEl.style.display = '';
+    } catch (e) {
+      statusEl.textContent = 'Lookup needs an internet connection.';
+    }
+  });
+</script>
+</body>
+</html>

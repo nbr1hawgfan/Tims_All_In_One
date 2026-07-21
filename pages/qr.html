@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QR Code Generator — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+  .mode-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .mode-toggle button {
+    flex: 1; padding: 10px 0; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-family: var(--font-display); font-weight: 700; cursor: pointer;
+  }
+  .mode-toggle button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .qr-output { display: flex; justify-content: center; padding: 20px; background: var(--surface); border-radius: var(--radius-md); margin-bottom: 14px; }
+  .qr-output canvas { max-width: 100%; height: auto; }
+  select { margin-bottom: 14px; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>QR Code Generator</h1></div>
+</header>
+
+<main class="shell">
+  <div class="mode-toggle">
+    <button id="mode-text" class="active">Text / Link</button>
+    <button id="mode-wifi">Wi-Fi network</button>
+  </div>
+
+  <div class="card">
+    <div id="panel-text">
+      <label for="qr-text">Text or URL</label>
+      <textarea id="qr-text" rows="3" placeholder="https://example.com or any text"></textarea>
+    </div>
+
+    <div id="panel-wifi" style="display:none;">
+      <label for="wifi-ssid">Network name (SSID)</label>
+      <input type="text" id="wifi-ssid" placeholder="e.g. HomeWiFi">
+      <label for="wifi-password">Password</label>
+      <input type="text" id="wifi-password" placeholder="Network password">
+      <label for="wifi-security">Security type</label>
+      <select id="wifi-security">
+        <option value="WPA">WPA / WPA2</option>
+        <option value="WEP">WEP</option>
+        <option value="nopass">None (open network)</option>
+      </select>
+    </div>
+
+    <button class="btn block" id="generate-btn">Generate QR code</button>
+  </div>
+
+  <div class="qr-output" id="qr-output" style="display:none;">
+    <canvas id="qr-canvas"></canvas>
+  </div>
+  <button class="btn secondary block" id="download-btn" style="display:none;">Download PNG</button>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  let mode = 'text';
+  document.getElementById('mode-text').addEventListener('click', () => setMode('text'));
+  document.getElementById('mode-wifi').addEventListener('click', () => setMode('wifi'));
+  function setMode(m) {
+    mode = m;
+    document.getElementById('mode-text').classList.toggle('active', m === 'text');
+    document.getElementById('mode-wifi').classList.toggle('active', m === 'wifi');
+    document.getElementById('panel-text').style.display = m === 'text' ? '' : 'none';
+    document.getElementById('panel-wifi').style.display = m === 'wifi' ? '' : 'none';
+  }
+
+  function wifiEscape(str) {
+    return str.replace(/([\\;,:"])/g, '\\$1');
+  }
+
+  document.getElementById('generate-btn').addEventListener('click', () => {
+    if (typeof QRCode === 'undefined') {
+      toolkitToast('QR library failed to load — check your connection', { danger: true });
+      return;
+    }
+    let payload;
+    if (mode === 'text') {
+      payload = document.getElementById('qr-text').value.trim();
+      if (!payload) { toolkitToast('Enter some text or a link first', { danger: true }); return; }
+    } else {
+      const ssid = document.getElementById('wifi-ssid').value.trim();
+      const password = document.getElementById('wifi-password').value;
+      const security = document.getElementById('wifi-security').value;
+      if (!ssid) { toolkitToast('Enter the network name', { danger: true }); return; }
+      payload = security === 'nopass'
+        ? `WIFI:T:nopass;S:${wifiEscape(ssid)};;`
+        : `WIFI:T:${security};S:${wifiEscape(ssid)};P:${wifiEscape(password)};;`;
+    }
+
+    const canvas = document.getElementById('qr-canvas');
+    QRCode.toCanvas(canvas, payload, { width: 260, margin: 2, color: { dark: '#073e50', light: '#ffffff' } }, (err) => {
+      if (err) {
+        toolkitToast('Could not generate that QR code', { danger: true });
+        return;
+      }
+      document.getElementById('qr-output').style.display = '';
+      document.getElementById('download-btn').style.display = '';
+    });
+  });
+
+  document.getElementById('download-btn').addEventListener('click', () => {
+    const canvas = document.getElementById('qr-canvas');
+    const link = document.createElement('a');
+    link.download = 'qr-code.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+</script>
+</body>
+</html>

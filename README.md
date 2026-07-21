@@ -31,6 +31,23 @@ browser's IndexedDB, **on that one device only**:
 - ID Cards are for your own reference only — explicitly not a legal or
   insurance-accepted document, just a way to have the info on hand.
 
+## New tools added since v1
+
+A few tools pull live data from small free public APIs (no accounts or keys
+needed). None of these save anything to your device — they're live lookups
+only:
+
+- **Currency Converter** — [Frankfurter.app](https://frankfurter.app) (ECB rates)
+- **Sun & Moon** — sunrise-sunset.org and farmsense.net, plus Open-Meteo's
+  free geocoding to turn a typed city into coordinates
+- **Public Holidays** — [date.nager.at](https://date.nager.at)
+- **What's My IP** — ipapi.co, falling back to ipify.org if that's unreachable
+- **QR Code Generator** — fully offline/client-side, no API (the `qrcode` library, loaded from unpkg)
+- **Age Calculator** and **Perpetual Calendar** — pure date math, no API, fully offline
+
+Because these hit external services, they need an internet connection to
+work — unlike the rest of the app, which works fully offline once loaded.
+
 ## Deploying to GitHub Pages
 
 1. Create a new repo on GitHub (e.g. `personal-toolkit`), public or private

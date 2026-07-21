@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Currency Converter — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .convert-row { display: flex; align-items: flex-end; gap: 10px; }
+  .convert-row > div { flex: 1; }
+  .swap-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--primary-wash); color: var(--primary-dark); font-size: 1.1rem;
+    cursor: pointer; margin-bottom: 14px;
+  }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Currency Converter</h1></div>
+</header>
+
+<main class="shell">
+  <div class="card">
+    <div class="convert-row">
+      <div>
+        <label for="from-val">Amount</label>
+        <input type="number" id="from-val" inputmode="decimal" value="1" min="0" step="0.01">
+        <select id="from-currency"></select>
+      </div>
+      <button class="swap-btn" id="swap-btn" aria-label="Swap currencies">⇄</button>
+      <div>
+        <label for="to-val">Converted</label>
+        <input type="text" id="to-val" readonly>
+        <select id="to-currency"></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-panel" id="rate-panel" style="display:none;">
+    <div class="label">Exchange rate</div>
+    <div class="big-number" id="out-rate" style="font-size:1.3rem;">—</div>
+    <div class="helper-text" id="out-updated" style="margin:6px 0 0;"></div>
+  </div>
+
+  <p class="helper-text" id="offline-note" style="text-align:center; display:none;">
+    Rates need an internet connection to update — showing the last rate fetched this session.
+  </p>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  const CURRENCIES = {
+    USD: 'US Dollar', EUR: 'Euro', GBP: 'British Pound', JPY: 'Japanese Yen',
+    CAD: 'Canadian Dollar', AUD: 'Australian Dollar', CHF: 'Swiss Franc', CNY: 'Chinese Yuan',
+    INR: 'Indian Rupee', MXN: 'Mexican Peso', BRL: 'Brazilian Real', SEK: 'Swedish Krona',
+    NOK: 'Norwegian Krone', NZD: 'New Zealand Dollar', SGD: 'Singapore Dollar', HKD: 'Hong Kong Dollar',
+    KRW: 'South Korean Won', ZAR: 'South African Rand', TRY: 'Turkish Lira', PLN: 'Polish Zloty',
+    THB: 'Thai Baht', IDR: 'Indonesian Rupiah', ILS: 'Israeli Shekel', DKK: 'Danish Krone',
+    CZK: 'Czech Koruna', HUF: 'Hungarian Forint', PHP: 'Philippine Peso', RON: 'Romanian Leu',
+    MYR: 'Malaysian Ringgit', ISK: 'Icelandic Krona',
+  };
+
+  const fromVal = document.getElementById('from-val');
+  const toVal = document.getElementById('to-val');
+  const fromCurrency = document.getElementById('from-currency');
+  const toCurrency = document.getElementById('to-currency');
+
+  function populateSelects() {
+    Object.entries(CURRENCIES).forEach(([code, name]) => {
+      fromCurrency.appendChild(new Option(`${code} — ${name}`, code));
+      toCurrency.appendChild(new Option(`${code} — ${name}`, code));
+    });
+    fromCurrency.value = 'USD';
+    toCurrency.value = 'EUR';
+  }
+
+  let lastRate = null;
+  let rateFetchTimer = null;
+
+  async function fetchRate() {
+    const from = fromCurrency.value;
+    const to = toCurrency.value;
+    if (from === to) { lastRate = 1; applyRate(); return; }
+    try {
+      const res = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
+      const data = await res.json();
+      if (data && data.rates && data.rates[to]) {
+        lastRate = data.rates[to];
+        document.getElementById('out-updated').textContent = `Rates as of ${data.date} · via Frankfurter (ECB data)`;
+        document.getElementById('offline-note').style.display = 'none';
+      }
+    } catch (e) {
+      document.getElementById('offline-note').style.display = lastRate ? '' : 'none';
+    }
+    applyRate();
+  }
+
+  function applyRate() {
+    const panel = document.getElementById('rate-panel');
+    if (lastRate == null) { panel.style.display = 'none'; toVal.value = ''; return; }
+    panel.style.display = '';
+    document.getElementById('out-rate').textContent = `1 ${fromCurrency.value} = ${Number(lastRate.toPrecision(6))} ${toCurrency.value}`;
+    recalcAmount();
+  }
+
+  function recalcAmount() {
+    const amount = parseFloat(fromVal.value);
+    if (isNaN(amount) || lastRate == null) { toVal.value = ''; return; }
+    toVal.value = (amount * lastRate).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  document.getElementById('swap-btn').addEventListener('click', () => {
+    const f = fromCurrency.value;
+    fromCurrency.value = toCurrency.value;
+    toCurrency.value = f;
+    fetchRate();
+  });
+
+  fromVal.addEventListener('input', recalcAmount);
+  fromCurrency.addEventListener('change', fetchRate);
+  toCurrency.addEventListener('change', fetchRate);
+
+  populateSelects();
+  fetchRate();
+</script>
+</body>
+</html>

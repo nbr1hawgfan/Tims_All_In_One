@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sun &amp; Moon — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .loc-row { display: flex; gap: 8px; margin-bottom: 6px; }
+  .loc-row input { margin-bottom: 0; }
+  .sun-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .sun-box { background: var(--primary-wash); border-radius: var(--radius-md); padding: 16px; text-align:center; }
+  .sun-box .icon { font-size: 1.6rem; }
+  .sun-box .num { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 600; color: var(--primary-dark); margin-top: 4px; }
+  .sun-box .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .moon-card { display: flex; align-items: center; gap: 16px; }
+  .moon-card .moon-emoji { font-size: 2.6rem; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Sun &amp; Moon</h1></div>
+</header>
+
+<main class="shell">
+  <div class="card">
+    <label for="city-input">Location</label>
+    <div class="loc-row">
+      <input type="text" id="city-input" placeholder="City, state or country">
+      <button class="btn secondary" id="locate-btn" style="flex-shrink:0;">📍 Use my location</button>
+    </div>
+    <button class="btn block" id="lookup-btn">Look up</button>
+    <div class="helper-text" id="loc-status" style="margin-top:10px; margin-bottom:0;"></div>
+  </div>
+
+  <div id="results" style="display:none;">
+    <div class="shelf-label">Today's sun</div>
+    <div class="sun-grid">
+      <div class="sun-box">
+        <div class="icon">🌅</div>
+        <div class="num" id="out-sunrise">—</div>
+        <div class="lbl">Sunrise</div>
+      </div>
+      <div class="sun-box">
+        <div class="icon">🌇</div>
+        <div class="num" id="out-sunset">—</div>
+        <div class="lbl">Sunset</div>
+      </div>
+    </div>
+    <div class="card" style="text-align:center; margin-bottom:16px;">
+      <div class="row-sub">Day length</div>
+      <div class="mono" style="font-size:1.1rem; font-weight:600; color:var(--primary-dark);" id="out-daylength">—</div>
+    </div>
+
+    <div class="shelf-label">Tonight's moon</div>
+    <div class="card moon-card">
+      <div class="moon-emoji" id="out-moon-emoji">🌕</div>
+      <div>
+        <div class="row-title" id="out-moon-phase" style="font-size:1.1rem;">—</div>
+        <div class="row-sub" id="out-moon-illum"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  const cityInput = document.getElementById('city-input');
+  const statusEl = document.getElementById('loc-status');
+
+  document.getElementById('locate-btn').addEventListener('click', () => {
+    if (!navigator.geolocation) { toolkitToast('Location isn\'t available on this device', { danger: true }); return; }
+    statusEl.textContent = 'Getting your location…';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { runLookup(pos.coords.latitude, pos.coords.longitude, 'your location'); },
+      () => { statusEl.textContent = 'Could not get your location — try typing a city instead.'; }
+    );
+  });
+
+  document.getElementById('lookup-btn').addEventListener('click', async () => {
+    const query = cityInput.value.trim();
+    if (!query) { toolkitToast('Type a city or tap "Use my location"', { danger: true }); return; }
+    statusEl.textContent = 'Finding that place…';
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1`);
+      const data = await res.json();
+      if (!data.results || data.results.length === 0) {
+        statusEl.textContent = 'Could not find that place — try a different spelling.';
+        return;
+      }
+      const place = data.results[0];
+      const label = [place.name, place.admin1, place.country].filter(Boolean).join(', ');
+      runLookup(place.latitude, place.longitude, label);
+    } catch (e) {
+      statusEl.textContent = 'Lookup needs an internet connection.';
+    }
+  });
+
+  async function runLookup(lat, lon, label) {
+    statusEl.textContent = `Showing results for ${label}`;
+    document.getElementById('results').style.display = 'none';
+    try {
+      const res = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`);
+      const data = await res.json();
+      if (data.status !== 'OK') throw new Error('bad response');
+      const sunrise = new Date(data.results.sunrise);
+      const sunset = new Date(data.results.sunset);
+      document.getElementById('out-sunrise').textContent = sunrise.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      document.getElementById('out-sunset').textContent = sunset.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      const lenSeconds = data.results.day_length;
+      const hrs = Math.floor(lenSeconds / 3600);
+      const mins = Math.round((lenSeconds % 3600) / 60);
+      document.getElementById('out-daylength').textContent = `${hrs}h ${mins}m of daylight`;
+      document.getElementById('results').style.display = '';
+    } catch (e) {
+      statusEl.textContent = 'Could not load sunrise/sunset data — check your connection.';
+      return;
+    }
+
+    try {
+      const ts = Math.floor(Date.now() / 1000);
+      const res = await fetch(`https://api.farmsense.net/v1/moonphases/?d=${ts}`);
+      const data = await res.json();
+      const moon = Array.isArray(data) ? data[0] : null;
+      if (moon && moon.Phase) {
+        document.getElementById('out-moon-phase').textContent = moon.Phase;
+        document.getElementById('out-moon-illum').textContent = moon.Illumination != null
+          ? `${Math.round(moon.Illumination * 100)}% illuminated`
+          : '';
+        document.getElementById('out-moon-emoji').textContent = moonEmoji(moon.Phase);
+      }
+    } catch (e) {
+      document.getElementById('out-moon-phase').textContent = 'Unavailable right now';
+      document.getElementById('out-moon-illum').textContent = '';
+    }
+  }
+
+  function moonEmoji(phase) {
+    const p = phase.toLowerCase();
+    if (p.includes('new')) return '🌑';
+    if (p.includes('waxing crescent')) return '🌒';
+    if (p.includes('first quarter')) return '🌓';
+    if (p.includes('waxing gibbous')) return '🌔';
+    if (p.includes('full')) return '🌕';
+    if (p.includes('waning gibbous')) return '🌖';
+    if (p.includes('last quarter') || p.includes('third quarter')) return '🌗';
+    if (p.includes('waning crescent')) return '🌘';
+    return '🌙';
+  }
+</script>
+</body>
+</html>

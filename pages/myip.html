@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What's My IP — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>What's My IP</h1></div>
+</header>
+
+<main class="shell">
+  <div class="result-panel" style="text-align:center;">
+    <div class="label">Your public IP address</div>
+    <div class="big-number mono" id="out-ip" style="font-size:1.8rem;">Loading…</div>
+  </div>
+  <button class="btn secondary block" id="copy-btn" style="margin-bottom:18px;" disabled>Copy IP address</button>
+
+  <div class="row-list" id="details-list"></div>
+
+  <p class="helper-text" style="text-align:center; margin-top:16px;">
+    This is the address your network shows to the outside internet — handy for VPN setups, whitelisting, or IT support.
+  </p>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  async function load() {
+    const ipEl = document.getElementById('out-ip');
+    const copyBtn = document.getElementById('copy-btn');
+    const listEl = document.getElementById('details-list');
+
+    try {
+      const res = await fetch('https://ipapi.co/json/');
+      const data = await res.json();
+      if (data && data.ip) {
+        ipEl.textContent = data.ip;
+        copyBtn.disabled = false;
+        const rows = [
+          ['City', [data.city, data.region].filter(Boolean).join(', ')],
+          ['Country', data.country_name],
+          ['ISP / Network', data.org],
+          ['Timezone', data.timezone],
+        ].filter(([, v]) => v);
+        listEl.innerHTML = rows.map(([label, value]) => `
+          <div class="row-item">
+            <div class="row-main">
+              <div class="row-sub">${toolkitEscapeHtml(label)}</div>
+              <div class="row-title">${toolkitEscapeHtml(value)}</div>
+            </div>
+          </div>
+        `).join('');
+        return;
+      }
+      throw new Error('no ip in response');
+    } catch (e) {
+      // Fall back to a simpler, more reliable IP-only service.
+      try {
+        const res2 = await fetch('https://api.ipify.org?format=json');
+        const data2 = await res2.json();
+        ipEl.textContent = data2.ip;
+        copyBtn.disabled = false;
+        listEl.innerHTML = `<div class="empty-state"><p>Location and network details aren't available right now — just the IP.</p></div>`;
+      } catch (e2) {
+        ipEl.textContent = 'Unavailable';
+        listEl.innerHTML = `<div class="empty-state"><p>Could not reach the lookup service — check your connection.</p></div>`;
+      }
+    }
+  }
+
+  document.getElementById('copy-btn').addEventListener('click', async () => {
+    const ip = document.getElementById('out-ip').textContent;
+    try { await navigator.clipboard.writeText(ip); toolkitToast('IP address copied'); }
+    catch { toolkitToast('Could not copy', { danger: true }); }
+  });
+
+  load();
+</script>
+</body>
+</html>

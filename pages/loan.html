@@ -18,8 +18,11 @@
 
 <main class="shell">
   <div class="card">
-    <label for="principal">Loan amount</label>
+    <label for="principal">Purchase price / loan amount</label>
     <input type="number" id="principal" inputmode="decimal" placeholder="e.g. 25000" min="0" step="0.01">
+
+    <label for="down-payment">Down payment (optional)</label>
+    <input type="number" id="down-payment" inputmode="decimal" placeholder="e.g. 3000" min="0" step="0.01">
 
     <div class="field-row">
       <div>
@@ -31,6 +34,11 @@
         <input type="number" id="term" inputmode="numeric" placeholder="e.g. 5" min="0" step="1">
       </div>
     </div>
+  </div>
+
+  <div class="result-panel" id="financed-panel" style="display:none;">
+    <div class="label">Amount financed</div>
+    <div class="big-number" id="out-financed">$0.00</div>
   </div>
 
   <div class="result-panel">
@@ -49,6 +57,7 @@
 <script src="../js/app.js"></script>
 <script>
   const principalEl = document.getElementById('principal');
+  const downPaymentEl = document.getElementById('down-payment');
   const rateEl = document.getElementById('rate');
   const termEl = document.getElementById('term');
 
@@ -58,11 +67,21 @@
   }
 
   function recalc() {
-    const P = parseFloat(principalEl.value) || 0;
+    const price = parseFloat(principalEl.value) || 0;
+    const down = parseFloat(downPaymentEl.value) || 0;
+    const P = Math.max(0, price - down);
     const annualRate = parseFloat(rateEl.value) || 0;
     const years = parseFloat(termEl.value) || 0;
     const n = Math.round(years * 12);
     const r = (annualRate / 100) / 12;
+
+    const financedPanel = document.getElementById('financed-panel');
+    if (down > 0) {
+      document.getElementById('out-financed').textContent = currency(P);
+      financedPanel.style.display = '';
+    } else {
+      financedPanel.style.display = 'none';
+    }
 
     let payment = 0;
     if (P > 0 && n > 0) {
@@ -84,7 +103,7 @@
     }
   }
 
-  [principalEl, rateEl, termEl].forEach((el) => el.addEventListener('input', recalc));
+  [principalEl, downPaymentEl, rateEl, termEl].forEach((el) => el.addEventListener('input', recalc));
   recalc();
 </script>
 </body>

@@ -25,6 +25,16 @@
   .qty-stepper .qty-num { font-family: var(--font-mono); font-size: 1.1rem; min-width: 28px; text-align: center; }
   #reader { width: 100%; border-radius: var(--radius-md); overflow: hidden; margin-bottom: 12px; background: #000; min-height: 260px; }
   #reader video { border-radius: var(--radius-md); width: 100% !important; }
+  .scan-frame-wrap { position: relative; }
+  .scan-reticle {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 260px; height: 140px; max-width: 78%;
+    border: 3px solid rgba(255,255,255,0.9); border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+    pointer-events: none;
+  }
+  .manual-barcode-row { margin: 4px 0 8px; }
+  .manual-barcode-row input { margin-bottom: 8px; }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -48,7 +58,15 @@
   <div class="modal-box">
     <h3>Scan a barcode</h3>
     <div class="scan-status" id="scan-status">Point your camera at the barcode</div>
-    <div id="reader"></div>
+    <div class="scan-frame-wrap">
+      <div id="reader"></div>
+      <div class="scan-reticle" aria-hidden="true"></div>
+    </div>
+    <p class="helper-text" style="text-align:center; margin-top:-4px;">Hold steady, about 4–6 inches away, with good lighting.</p>
+    <div class="manual-barcode-row">
+      <input type="text" id="manual-barcode-input" inputmode="numeric" placeholder="Or type the barcode number">
+      <button class="btn secondary block" id="manual-barcode-btn" type="button">Look up this number</button>
+    </div>
     <button class="btn secondary block" id="scan-cancel-btn">Cancel</button>
   </div>
 </div>
@@ -220,7 +238,19 @@
   }
 
   function scanConfig() {
-    return { fps: 10, qrbox: { width: 260, height: 140 }, formatsToSupport: scanFormats() };
+    return {
+      fps: 10,
+      qrbox: { width: 260, height: 140 },
+      formatsToSupport: scanFormats(),
+      // Ask for the highest resolution the camera offers — the default stream
+      // resolution some browsers pick is too low to resolve small, dense
+      // retail barcodes at a normal scanning distance.
+      videoConstraints: {
+        facingMode: 'environment',
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+    };
   }
 
   async function onScanSuccess(decodedText) {
@@ -242,6 +272,7 @@
     }
     scanModal.classList.add('show');
     statusEl.textContent = 'Starting camera…';
+    document.getElementById('manual-barcode-input').value = '';
     document.getElementById('reader').innerHTML = '';
     html5QrCode = new Html5Qrcode('reader');
     const config = scanConfig();
@@ -269,6 +300,19 @@
     }
     if (hide) scanModal.classList.remove('show');
   }
+
+  async function submitManualBarcode() {
+    const input = document.getElementById('manual-barcode-input');
+    const val = input.value.trim();
+    if (!val) { toolkitToast('Type the barcode number first', { danger: true }); return; }
+    document.getElementById('scan-status').textContent = 'Looking up product…';
+    stopScan(false);
+    await handleBarcodeFound(val);
+  }
+  document.getElementById('manual-barcode-btn').addEventListener('click', submitManualBarcode);
+  document.getElementById('manual-barcode-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitManualBarcode();
+  });
 
   async function handleBarcodeFound(barcode) {
     pendingBarcode = barcode;

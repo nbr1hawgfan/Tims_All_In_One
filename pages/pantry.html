@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pantry Scanner — Personal Toolkit</title>
 <meta name="theme-color" content="#0a5870">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
@@ -21,8 +23,8 @@
   .qty-stepper { display: flex; align-items: center; gap: 10px; }
   .qty-stepper button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 1.1rem; font-weight: 700; cursor: pointer; color: var(--primary-dark); }
   .qty-stepper .qty-num { font-family: var(--font-mono); font-size: 1.1rem; min-width: 28px; text-align: center; }
-  #reader { width: 100%; border-radius: var(--radius-md); overflow: hidden; margin-bottom: 12px; background: #000; }
-  #reader video { border-radius: var(--radius-md); }
+  #reader { width: 100%; border-radius: var(--radius-md); overflow: hidden; margin-bottom: 12px; background: #000; min-height: 260px; }
+  #reader video { border-radius: var(--radius-md); width: 100% !important; }
 </style>
 </head>
 <body data-sw-path="../sw.js">

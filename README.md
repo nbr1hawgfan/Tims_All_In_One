@@ -37,7 +37,7 @@ A few tools pull live data from small free public APIs (no accounts or keys
 needed). None of these save anything to your device — they're live lookups
 only:
 
-- **Currency Converter** — [Frankfurter.app](https://frankfurter.app) (ECB rates)
+- **Currency Converter** — [Frankfurter.dev](https://frankfurter.dev) (ECB rates)
 - **Sun & Moon** — sunrise-sunset.org and farmsense.net, plus Open-Meteo's
   free geocoding to turn a typed city into coordinates
 - **Public Holidays** — [date.nager.at](https://date.nager.at)

@@ -88,7 +88,7 @@
     const to = toCurrency.value;
     if (from === to) { lastRate = 1; applyRate(); return; }
     try {
-      const res = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
+      const res = await fetch(`https://api.frankfurter.dev/v1/latest?base=${from}&symbols=${to}`);
       const data = await res.json();
       if (data && data.rates && data.rates[to]) {
         lastRate = data.rates[to];

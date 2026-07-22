@@ -69,6 +69,23 @@ work — unlike the rest of the app, which works fully offline once loaded.
    (iOS Safari) or the install prompt (Android Chrome) to get the app-icon,
    full-screen experience.
 
+## Open Food Facts integration
+
+The Pantry Scanner pulls from [Open Food Facts](https://world.openfoodfacts.org),
+a free, keyless public product database, in three ways:
+
+- **Scanning a barcode** looks up the exact product.
+- **"Add manually"** has an optional "Search product database" box — search
+  by name (e.g. "peanut butter") and pick from real matches instead of typing
+  everything by hand.
+- Either path pulls in **nutrition facts (per 100g), ingredients, and
+  allergen warnings** when available, shown in the item's edit screen, with
+  an allergen chip surfaced right in the pantry list for a quick glance.
+
+None of this is guaranteed to exist for every product — smaller or local
+brands are often missing data, sometimes entirely. When that happens, the
+name/brand fields are just left blank for manual entry, same as always.
+
 ## Camera barcode scanning
 
 Uses **html5-qrcode** (pinned at `2.3.8` via unpkg) — the same library that's

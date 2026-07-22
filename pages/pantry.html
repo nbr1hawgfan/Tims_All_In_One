@@ -78,6 +78,15 @@
     <div id="item-photo-wrap" style="display:none; margin-bottom:12px;">
       <img id="item-photo" style="width:64px; height:64px; border-radius:10px; object-fit:cover;">
     </div>
+    <div id="off-search-wrap">
+      <label for="off-search-input">Search product database (optional)</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="off-search-input" placeholder="e.g. peanut butter" style="margin-bottom:0;">
+        <button class="btn secondary" id="off-search-btn" type="button" style="flex-shrink:0;">Search</button>
+      </div>
+      <div class="row-list" id="off-search-results" style="margin-top:10px;"></div>
+      <hr class="divider">
+    </div>
     <label for="item-name">Item name</label>
     <input type="text" id="item-name" placeholder="e.g. Peanut butter">
     <label for="item-brand">Brand (optional)</label>
@@ -104,6 +113,12 @@
       <span>Mark as running low</span>
       <input type="checkbox" id="item-lowstock">
     </div>
+    <div id="item-nutrition-panel" style="display:none; background: var(--surface-sunken); border-radius: var(--radius-md); padding: 14px; margin-bottom:16px;">
+      <div class="shelf-label" style="margin-bottom:8px;">From Open Food Facts</div>
+      <div id="allergen-chips" style="margin-bottom:8px;"></div>
+      <div id="nutrition-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:8px;"></div>
+      <div id="ingredients-text" class="helper-text" style="margin:0;"></div>
+    </div>
     <div class="btn-row">
       <button class="btn secondary" id="item-cancel-btn" style="flex:1;">Cancel</button>
       <button class="btn danger" id="item-delete-btn" style="display:none;">Delete</button>
@@ -118,6 +133,9 @@
   let editingId = null;
   let pendingBarcode = null;
   let pendingImage = null;
+  let pendingNutrition = null;
+  let pendingIngredients = null;
+  let pendingAllergens = null;
   let qty = 1;
 
   const itemModal = document.getElementById('item-modal');
@@ -131,6 +149,9 @@
     editingId = item ? item.id : null;
     pendingBarcode = item ? item.barcode : pendingBarcode;
     pendingImage = item ? item.imageDataUrl : pendingImage;
+    pendingNutrition = item ? (item.nutrition || null) : pendingNutrition;
+    pendingIngredients = item ? (item.ingredientsText || null) : pendingIngredients;
+    pendingAllergens = item ? (item.allergens || null) : pendingAllergens;
     document.getElementById('item-modal-title').textContent = item ? 'Edit pantry item' : 'Add pantry item';
     document.getElementById('item-name').value = item ? item.name : '';
     document.getElementById('item-brand').value = item ? (item.brand || '') : '';
@@ -139,6 +160,9 @@
     updateQtyDisplay();
     document.getElementById('item-lowstock').checked = item ? !!item.lowStock : false;
     document.getElementById('item-delete-btn').style.display = item ? '' : 'none';
+    document.getElementById('off-search-wrap').style.display = item ? 'none' : '';
+    document.getElementById('off-search-input').value = '';
+    document.getElementById('off-search-results').innerHTML = '';
     const photoWrap = document.getElementById('item-photo-wrap');
     if (pendingImage) {
       document.getElementById('item-photo').src = pendingImage;
@@ -146,17 +170,100 @@
     } else {
       photoWrap.style.display = 'none';
     }
+    renderNutritionPanel();
     itemModal.classList.add('show');
   }
   function closeItemModal() {
     itemModal.classList.remove('show');
     pendingBarcode = null;
     pendingImage = null;
+    pendingNutrition = null;
+    pendingIngredients = null;
+    pendingAllergens = null;
+  }
+
+  function renderNutritionPanel() {
+    const panel = document.getElementById('item-nutrition-panel');
+    const hasData = pendingNutrition || pendingIngredients || (pendingAllergens && pendingAllergens.length);
+    if (!hasData) { panel.style.display = 'none'; return; }
+    panel.style.display = '';
+
+    const chipsEl = document.getElementById('allergen-chips');
+    chipsEl.innerHTML = (pendingAllergens && pendingAllergens.length)
+      ? `<span class="chip danger">⚠ Contains: ${pendingAllergens.map(toolkitEscapeHtml).join(', ')}</span>`
+      : '';
+
+    const gridEl = document.getElementById('nutrition-grid');
+    if (pendingNutrition) {
+      const n = pendingNutrition;
+      const rows = [
+        ['Calories', n.calories, ''],
+        ['Protein', n.protein, 'g'],
+        ['Carbs', n.carbs, 'g'],
+        ['Sugar', n.sugar, 'g'],
+        ['Fat', n.fat, 'g'],
+        ['Sodium', n.sodium != null ? n.sodium * 1000 : null, 'mg'],
+      ].filter(([, v]) => v != null && !isNaN(v));
+      const header = `<div style="grid-column:1/-1; font-size:0.7rem; color:var(--text-muted);">Per 100g${n.servingSize ? ' · serving: ' + toolkitEscapeHtml(n.servingSize) : ''}</div>`;
+      const cells = rows.map(([label, val, unit]) => `
+        <div style="text-align:center;">
+          <div class="mono" style="font-weight:600; color:var(--primary-dark);">${Number(val).toFixed(val < 10 ? 1 : 0)}${unit}</div>
+          <div class="row-sub" style="font-size:0.68rem;">${label}</div>
+        </div>
+      `).join('');
+      gridEl.innerHTML = rows.length ? header + cells : '';
+    } else {
+      gridEl.innerHTML = '';
+    }
+
+    document.getElementById('ingredients-text').textContent = pendingIngredients ? 'Ingredients: ' + pendingIngredients : '';
   }
 
   document.getElementById('manual-btn').addEventListener('click', () => openItemModal());
   document.getElementById('item-cancel-btn').addEventListener('click', closeItemModal);
   itemModal.addEventListener('click', (e) => { if (e.target === itemModal) closeItemModal(); });
+
+  document.getElementById('off-search-btn').addEventListener('click', searchOpenFoodFacts);
+  document.getElementById('off-search-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); searchOpenFoodFacts(); }
+  });
+
+  async function searchOpenFoodFacts() {
+    const term = document.getElementById('off-search-input').value.trim();
+    const resultsEl = document.getElementById('off-search-results');
+    if (!term) { toolkitToast('Type something to search for', { danger: true }); return; }
+    resultsEl.innerHTML = `<div class="empty-state"><p>Searching…</p></div>`;
+    try {
+      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(term)}&search_simple=1&action=process&json=1&page_size=8&fields=code,product_name,brands,image_front_small_url`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const products = (data.products || []).filter((p) => p.product_name && p.code);
+      if (products.length === 0) {
+        resultsEl.innerHTML = `<div class="empty-state"><p>No matches — try different words, or just type the name below.</p></div>`;
+        return;
+      }
+      resultsEl.innerHTML = '';
+      products.forEach((p) => {
+        const row = document.createElement('div');
+        row.className = 'row-item';
+        row.style.cursor = 'pointer';
+        row.innerHTML = `
+          ${p.image_front_small_url ? `<img class="row-thumb" src="${p.image_front_small_url}" alt="">` : `<div class="row-thumb" style="display:flex;align-items:center;justify-content:center;">🥫</div>`}
+          <div class="row-main">
+            <div class="row-title">${toolkitEscapeHtml(p.product_name)}</div>
+            <div class="row-sub">${toolkitEscapeHtml(p.brands || '')}</div>
+          </div>
+        `;
+        row.addEventListener('click', async () => {
+          resultsEl.innerHTML = `<div class="empty-state"><p>Loading details…</p></div>`;
+          await handleBarcodeFound(p.code);
+        });
+        resultsEl.appendChild(row);
+      });
+    } catch (e) {
+      resultsEl.innerHTML = `<div class="empty-state"><p>Search needs an internet connection.</p></div>`;
+    }
+  }
 
   document.getElementById('item-save-btn').addEventListener('click', async () => {
     const name = document.getElementById('item-name').value.trim();
@@ -171,6 +278,9 @@
       lowStock: document.getElementById('item-lowstock').checked,
       barcode: pendingBarcode || (existing ? existing.barcode : null),
       imageDataUrl: pendingImage || (existing ? existing.imageDataUrl : null),
+      nutrition: pendingNutrition || (existing ? existing.nutrition : null),
+      ingredientsText: pendingIngredients || (existing ? existing.ingredientsText : null),
+      allergens: pendingAllergens || (existing ? existing.allergens : null),
       addedAt: existing ? existing.addedAt : Date.now(),
     };
     await dbPut('pantry', item);
@@ -317,16 +427,39 @@
   async function handleBarcodeFound(barcode) {
     pendingBarcode = barcode;
     pendingImage = null;
+    pendingNutrition = null;
+    pendingIngredients = null;
+    pendingAllergens = null;
     let name = '';
     let brand = '';
     try {
       const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json`);
       const data = await res.json();
       if (data.status === 1 && data.product) {
-        name = data.product.product_name || '';
-        brand = data.product.brands || '';
-        if (data.product.image_front_small_url) {
-          pendingImage = data.product.image_front_small_url;
+        const p = data.product;
+        name = p.product_name || '';
+        brand = p.brands || '';
+        if (p.image_front_small_url) pendingImage = p.image_front_small_url;
+
+        if (p.nutriments) {
+          const nut = p.nutriments;
+          const nutrition = {
+            calories: nut['energy-kcal_100g'],
+            protein: nut['proteins_100g'],
+            carbs: nut['carbohydrates_100g'],
+            sugar: nut['sugars_100g'],
+            fat: nut['fat_100g'],
+            sodium: nut['sodium_100g'],
+            servingSize: p.serving_size || null,
+          };
+          const hasAnyValue = Object.values(nutrition).some((v) => typeof v === 'number');
+          if (hasAnyValue) pendingNutrition = nutrition;
+        }
+
+        pendingIngredients = p.ingredients_text_en || p.ingredients_text || null;
+
+        if (p.allergens_tags && p.allergens_tags.length) {
+          pendingAllergens = p.allergens_tags.map((t) => t.replace(/^\w+:/, '').replace(/-/g, ' '));
         }
       }
     } catch (e) { /* offline or lookup failed — fall back to manual entry */ }
@@ -359,7 +492,7 @@
         ${item.imageDataUrl ? `<img class="row-thumb" src="${item.imageDataUrl}" alt="">` : `<div class="row-thumb" style="display:flex;align-items:center;justify-content:center;">🥫</div>`}
         <div class="row-main">
           <div class="row-title">${toolkitEscapeHtml(item.name)}</div>
-          <div class="row-sub">${item.brand ? toolkitEscapeHtml(item.brand) + ' · ' : ''}${item.category} · Qty ${item.qty}${item.lowStock ? ' · <span class="chip low-badge">Running low</span>' : ''}</div>
+          <div class="row-sub">${item.brand ? toolkitEscapeHtml(item.brand) + ' · ' : ''}${item.category} · Qty ${item.qty}${item.lowStock ? ' · <span class="chip low-badge">Running low</span>' : ''}${item.allergens && item.allergens.length ? ' · <span class="chip danger">⚠ ' + item.allergens.slice(0, 2).map(toolkitEscapeHtml).join(', ') + (item.allergens.length > 2 ? '…' : '') + '</span>' : ''}</div>
         </div>
         <button class="icon-btn" aria-label="Add to shopping list" data-add>🛒</button>
         <button class="icon-btn" aria-label="Edit item" data-edit>✎</button>

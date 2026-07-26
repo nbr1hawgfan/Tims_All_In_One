@@ -31,6 +31,12 @@
   .side-select button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .count-row { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 18px; }
   .count-row button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); font-size: 1.1rem; font-weight: 700; cursor: pointer; color: var(--primary-dark); }
+  .pb-ball {
+    width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-weight: 700; font-size: 1.15rem; box-shadow: var(--shadow-sm);
+  }
+  .pb-ball.white { background: #ffffff; border: 2px solid var(--border); color: var(--text); }
+  .pb-ball.red { background: #c0392b; color: #fff; }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -44,6 +50,7 @@
   <div class="mode-toggle">
     <button id="mode-dice" class="active">Dice</button>
     <button id="mode-number">Random Number</button>
+    <button id="mode-powerball">Powerball</button>
   </div>
 
   <!-- ============ DICE ============ -->
@@ -93,17 +100,31 @@
       <div class="big-number" id="num-result">—</div>
     </div>
   </div>
+
+  <!-- ============ POWERBALL ============ -->
+  <div id="panel-powerball" style="display:none;">
+    <div class="card" style="text-align:center;">
+      <button class="btn block" id="pb-generate-btn">Quick Pick</button>
+    </div>
+    <div id="pb-balls" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:20px 0;"></div>
+    <p class="helper-text" style="text-align:center;">Five white balls (1–69) plus one red Powerball (1–26) — just like a real quick pick. For fun only, not affiliated with the Multi-State Lottery Association; always verify official numbers through an authorized retailer.</p>
+    <div class="shelf-label" id="pb-recent-label" style="display:none;">Recent quick picks</div>
+    <div class="row-list" id="pb-recent-list"></div>
+  </div>
 </main>
 
 <script src="../js/app.js"></script>
 <script>
   document.getElementById('mode-dice').addEventListener('click', () => setMode('dice'));
   document.getElementById('mode-number').addEventListener('click', () => setMode('number'));
+  document.getElementById('mode-powerball').addEventListener('click', () => setMode('powerball'));
   function setMode(mode) {
     document.getElementById('mode-dice').classList.toggle('active', mode === 'dice');
     document.getElementById('mode-number').classList.toggle('active', mode === 'number');
+    document.getElementById('mode-powerball').classList.toggle('active', mode === 'powerball');
     document.getElementById('panel-dice').style.display = mode === 'dice' ? '' : 'none';
     document.getElementById('panel-number').style.display = mode === 'number' ? '' : 'none';
+    document.getElementById('panel-powerball').style.display = mode === 'powerball' ? '' : 'none';
   }
 
   // ---------- Dice ----------
@@ -156,6 +177,39 @@
     if (max <= min) { toolkitToast('Maximum must be greater than minimum', { danger: true }); return; }
     const result = min + secureRandomInt(max - min + 1);
     document.getElementById('num-result').textContent = result.toLocaleString();
+    try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+  });
+
+  // ---------- Powerball ----------
+  let pbHistory = [];
+
+  function generatePowerball() {
+    const whites = new Set();
+    while (whites.size < 5) whites.add(secureRandomInt(69) + 1);
+    return { whites: Array.from(whites).sort((a, b) => a - b), red: secureRandomInt(26) + 1 };
+  }
+
+  function renderPbBalls(pick) {
+    document.getElementById('pb-balls').innerHTML =
+      pick.whites.map((n) => `<div class="pb-ball white">${n}</div>`).join('') +
+      `<div class="pb-ball red">${pick.red}</div>`;
+  }
+
+  function renderPbHistory() {
+    document.getElementById('pb-recent-label').style.display = pbHistory.length ? '' : 'none';
+    document.getElementById('pb-recent-list').innerHTML = pbHistory.map((p) => `
+      <div class="row-item">
+        <div class="row-main"><div class="row-title mono">${p.whites.join(' - ')} · PB ${p.red}</div></div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('pb-generate-btn').addEventListener('click', () => {
+    const pick = generatePowerball();
+    renderPbBalls(pick);
+    pbHistory.unshift(pick);
+    pbHistory = pbHistory.slice(0, 8);
+    renderPbHistory();
     try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
   });
 </script>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flashlight — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .flash-btn {
+    width: 200px; height: 200px; border-radius: 50%; border: none; margin: 30px auto; display: block;
+    background: var(--primary); color: #fff; font-family: var(--font-display); font-weight: 800;
+    font-size: 1.1rem; cursor: pointer; box-shadow: var(--shadow-lg);
+  }
+  .flash-btn.on { background: var(--accent); color: #3a2a05; }
+  #screen-flash-overlay {
+    position: fixed; inset: 0; background: #ffffff; display: none; z-index: 999;
+    align-items: flex-end; justify-content: center; padding-bottom: 60px;
+  }
+  #screen-flash-overlay.show { display: flex; }
+  #screen-flash-overlay button {
+    padding: 14px 28px; border-radius: 999px; border: none; background: #111; color: #fff;
+    font-family: var(--font-display); font-weight: 700; font-size: 1rem;
+  }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Flashlight</h1></div>
+</header>
+
+<main class="shell" style="text-align:center;">
+  <button class="flash-btn" id="flash-btn">TURN ON</button>
+  <p class="helper-text" id="flash-status">Tap to turn on your flashlight.</p>
+</main>
+
+<div id="screen-flash-overlay">
+  <button id="screen-flash-off-btn">Turn off</button>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+  let torchTrack = null;
+  let torchStream = null;
+  let usingScreenFlash = false;
+  let isOn = false;
+
+  const btn = document.getElementById('flash-btn');
+  const statusEl = document.getElementById('flash-status');
+
+  async function tryTorch() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const track = stream.getVideoTracks()[0];
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      if (!caps.torch) { stream.getTracks().forEach((t) => t.stop()); return false; }
+      await track.applyConstraints({ advanced: [{ torch: true }] });
+      torchTrack = track;
+      torchStream = stream;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function stopTorch() {
+    if (torchTrack) {
+      try { torchTrack.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) {}
+    }
+    if (torchStream) torchStream.getTracks().forEach((t) => t.stop());
+    torchTrack = null;
+    torchStream = null;
+  }
+
+  function showScreenFlash() {
+    usingScreenFlash = true;
+    document.getElementById('screen-flash-overlay').classList.add('show');
+  }
+  function hideScreenFlash() {
+    usingScreenFlash = false;
+    document.getElementById('screen-flash-overlay').classList.remove('show');
+  }
+
+  async function turnOn() {
+    statusEl.textContent = 'Starting…';
+    const torchOk = await tryTorch();
+    if (torchOk) {
+      isOn = true;
+      btn.textContent = 'TURN OFF';
+      btn.classList.add('on');
+      statusEl.textContent = 'Camera flash is on.';
+    } else {
+      showScreenFlash();
+      isOn = true;
+      btn.textContent = 'TURN OFF';
+      btn.classList.add('on');
+      statusEl.textContent = "Your phone doesn't allow the browser to control its camera flash, so this is using your screen as a light instead.";
+    }
+  }
+
+  function turnOff() {
+    stopTorch();
+    hideScreenFlash();
+    isOn = false;
+    btn.textContent = 'TURN ON';
+    btn.classList.remove('on');
+    statusEl.textContent = 'Tap to turn on your flashlight.';
+  }
+
+  btn.addEventListener('click', () => { isOn ? turnOff() : turnOn(); });
+  document.getElementById('screen-flash-off-btn').addEventListener('click', turnOff);
+  window.addEventListener('beforeunload', stopTorch);
+</script>
+</body>
+</html>

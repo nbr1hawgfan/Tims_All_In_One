@@ -69,13 +69,49 @@ work — unlike the rest of the app, which works fully offline once loaded.
    (iOS Safari) or the install prompt (Android Chrome) to get the app-icon,
    full-screen experience.
 
+## Shopping List export
+
+Three buttons on the Shopping List: **Share** (uses your phone's native share
+sheet — Messages, Mail, whatever you pick — falls back to opening an email
+draft on desktop), **Print** (clean checklist, no app chrome, works great as
+"Save as PDF" from the print dialog too), and **Copy** (plain text to
+clipboard).
+
+## Home Inventory
+
+Photos, room, estimated value, purchase date, and serial/model number per
+item, grouped by room with running totals — built for insurance
+documentation. **Print report** gives a photo-inclusive printable/PDF-able
+summary; **Export CSV** gives a plain spreadsheet (no photos) of the same
+data. This is a personal record-keeping tool, not a substitute for an actual
+appraisal or your insurance policy's documentation requirements.
+
+## Quick Utilities
+
+- **Timer & Stopwatch** — countdown with a real audible alarm (three tones via
+  Web Audio, no sound file needed) plus vibration, and a stopwatch with laps.
+- **Flashlight** — tries your camera's actual LED torch first (works on
+  Android Chrome); if the browser won't allow that (all iPhones, some other
+  browsers), it automatically falls back to a full white screen as a light
+  source instead, so it always does *something* usable.
+- **Scan Anything** — same scanner as Pantry, but general-purpose: any QR
+  code or barcode, with Copy and (for links) Open buttons. Same iPhone
+  camera-resolution caveats apply as noted above.
+- **Dice & Random** — d4 through d20, 1–12 dice at once, plus a min/max
+  random number generator. Uses the browser's cryptographic random source,
+  not `Math.random()`.
+
 ## Health Tracker
 
-Four tabs, one page: **Body** (weight, BMI, body fat % including the Navy
-method estimator), **Steps** (one log per day), **Water**, and **Protein**
-(quick-add buttons plus custom amounts, with a daily goal and progress bar
-for the last two). All local, same as everything else — nothing leaves the
-device, and there's no employer or account tied to any of it.
+Six tabs, one page: **Body** (weight, BMI, body fat % including the Navy
+method estimator), **Sleep** (hours + quality rating, one entry per night),
+**Blood Pressure** (systolic/diastolic/pulse, multiple readings per day,
+shown with the standard AHA reference category — Normal / Elevated / Stage 1
+/ Stage 2 / Crisis — as a public-guideline label only, not medical advice),
+**Steps** (one log per day), **Water**, and **Protein** (quick-add buttons
+plus custom amounts, with a daily goal and progress bar). All local, same as
+everything else — nothing leaves the device, and there's no employer or
+account tied to any of it.
 
 ## Meal Picker
 

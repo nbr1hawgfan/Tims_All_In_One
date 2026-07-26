@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Home Inventory — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .modal-overlay { position: fixed; inset: 0; background: rgba(10,40,50,0.5); display: none; align-items: flex-start; justify-content: center; z-index: 50; padding: 20px 0; overflow-y: auto; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; width: 92%; max-width: 480px; }
+  .export-row { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
+  .export-row button { flex: 1; min-width: 90px; }
+  .room-group { margin-bottom: 22px; }
+  .room-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .room-header .room-name { font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: var(--primary-dark); }
+  .room-header .room-total { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); }
+
+  #print-area { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area { display: block; position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
+    #print-area h1 { font-size: 1.4rem; margin-bottom: 2px; }
+    #print-area .print-date { font-size: 0.8rem; color: #555; margin-bottom: 4px; }
+    #print-area .print-total { font-size: 1rem; font-weight: 700; margin-bottom: 18px; }
+    #print-area .print-room { font-size: 1.1rem; font-weight: 700; margin: 18px 0 8px; border-bottom: 2px solid #333; padding-bottom: 4px; }
+    #print-area .print-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #ddd; page-break-inside: avoid; }
+    #print-area .print-item img { width: 70px; height: 70px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+    #print-area .print-item .meta { font-size: 0.82rem; color: #444; }
+    #print-area .print-item .name { font-weight: 700; font-size: 0.95rem; }
+  }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Home Inventory</h1></div>
+</header>
+
+<main class="shell">
+  <div class="result-panel" style="text-align:center;">
+    <div class="label">Total estimated value</div>
+    <div class="big-number" id="grand-total">$0</div>
+  </div>
+
+  <button class="btn block" id="add-btn" style="margin-bottom:14px;">+ Add item</button>
+  <div class="export-row">
+    <button class="btn secondary" id="print-btn">🖨️ Print report</button>
+    <button class="btn secondary" id="csv-btn">⬇️ Export CSV</button>
+  </div>
+
+  <p class="helper-text" style="text-align:center;">Useful for insurance documentation — not a substitute for an actual policy or appraisal.</p>
+
+  <div id="inventory-groups"></div>
+</main>
+
+<!-- Add/edit item modal -->
+<div class="modal-overlay" id="item-modal">
+  <div class="modal-box">
+    <h3 id="item-modal-title">Add item</h3>
+    <div id="item-photo-wrap" style="display:none; margin-bottom:12px;">
+      <img id="item-photo" style="width:100%; max-height:180px; object-fit:cover; border-radius:10px;">
+    </div>
+    <label class="btn secondary block" style="text-align:center; margin-bottom:16px;">
+      📷 Add / replace photo
+      <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none;">
+    </label>
+
+    <label for="item-name">Item name</label>
+    <input type="text" id="item-name" placeholder="e.g. Living room TV">
+    <label for="item-room">Room / category</label>
+    <select id="item-room">
+      <option>Living Room</option>
+      <option>Bedroom</option>
+      <option>Kitchen</option>
+      <option>Dining Room</option>
+      <option>Bathroom</option>
+      <option>Garage</option>
+      <option>Office</option>
+      <option>Outdoor</option>
+      <option>Electronics</option>
+      <option>Furniture</option>
+      <option>Appliances</option>
+      <option>Jewelry &amp; Valuables</option>
+      <option>Other</option>
+    </select>
+    <div class="field-row">
+      <div>
+        <label for="item-value">Estimated value ($)</label>
+        <input type="number" id="item-value" inputmode="decimal" placeholder="e.g. 800">
+      </div>
+      <div>
+        <label for="item-date">Purchase date</label>
+        <input type="date" id="item-date">
+      </div>
+    </div>
+    <label for="item-serial">Serial / model number (optional)</label>
+    <input type="text" id="item-serial" placeholder="e.g. SN-1234567">
+    <label for="item-notes">Notes (optional)</label>
+    <textarea id="item-notes" rows="2" placeholder="Condition, where purchased, etc."></textarea>
+
+    <div class="btn-row">
+      <button class="btn secondary" id="item-cancel-btn" style="flex:1;">Cancel</button>
+      <button class="btn danger" id="item-delete-btn" style="display:none;">Delete</button>
+      <button class="btn" id="item-save-btn" style="flex:1;">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="print-area">
+  <h1>Home Inventory</h1>
+  <div class="print-date" id="print-date"></div>
+  <div class="print-total" id="print-total"></div>
+  <div id="print-content"></div>
+</div>
+
+<script src="../js/db.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  let editingId = null;
+  let pendingPhoto = null;
+  const itemModal = document.getElementById('item-modal');
+
+  function openItemModal(item = null) {
+    editingId = item ? item.id : null;
+    pendingPhoto = item ? item.photoDataUrl : null;
+    document.getElementById('item-modal-title').textContent = item ? 'Edit item' : 'Add item';
+    document.getElementById('item-name').value = item ? item.name : '';
+    document.getElementById('item-room').value = item ? item.room : 'Living Room';
+    document.getElementById('item-value').value = item ? (item.estimatedValue || '') : '';
+    document.getElementById('item-date').value = item ? (item.purchaseDate || '') : '';
+    document.getElementById('item-serial').value = item ? (item.serialNumber || '') : '';
+    document.getElementById('item-notes').value = item ? (item.notes || '') : '';
+    document.getElementById('item-delete-btn').style.display = item ? '' : 'none';
+    updatePhotoPreview();
+    itemModal.classList.add('show');
+  }
+  function closeItemModal() {
+    itemModal.classList.remove('show');
+    pendingPhoto = null;
+  }
+  function updatePhotoPreview() {
+    const wrap = document.getElementById('item-photo-wrap');
+    if (pendingPhoto) { document.getElementById('item-photo').src = pendingPhoto; wrap.style.display = ''; }
+    else { wrap.style.display = 'none'; }
+  }
+
+  document.getElementById('add-btn').addEventListener('click', () => openItemModal());
+  document.getElementById('item-cancel-btn').addEventListener('click', closeItemModal);
+  itemModal.addEventListener('click', (e) => { if (e.target === itemModal) closeItemModal(); });
+
+  document.getElementById('photo-input').addEventListener('change', async () => {
+    const file = document.getElementById('photo-input').files[0];
+    if (!file) return;
+    toolkitToast('Processing photo…');
+    pendingPhoto = await toolkitFileToResizedDataUrl(file, 1280, 0.82);
+    updatePhotoPreview();
+  });
+
+  document.getElementById('item-save-btn').addEventListener('click', async () => {
+    const name = document.getElementById('item-name').value.trim();
+    if (!name) { toolkitToast('Enter an item name', { danger: true }); return; }
+    const existing = editingId ? await dbGet('home_inventory', editingId) : null;
+    await dbPut('home_inventory', {
+      id: editingId || toolkitId(),
+      name,
+      room: document.getElementById('item-room').value,
+      estimatedValue: parseFloat(document.getElementById('item-value').value) || 0,
+      purchaseDate: document.getElementById('item-date').value || null,
+      serialNumber: document.getElementById('item-serial').value.trim(),
+      notes: document.getElementById('item-notes').value.trim(),
+      photoDataUrl: pendingPhoto,
+      addedAt: existing ? existing.addedAt : Date.now(),
+    });
+    closeItemModal();
+    toolkitToast('Item saved');
+    refresh();
+  });
+
+  document.getElementById('item-delete-btn').addEventListener('click', async () => {
+    if (editingId) { await dbDelete('home_inventory', editingId); toolkitToast('Item removed'); }
+    closeItemModal();
+    refresh();
+  });
+
+  function currency(n) {
+    return '$' + (n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
+  async function refresh() {
+    const items = await dbGetAll('home_inventory');
+    const groupsEl = document.getElementById('inventory-groups');
+    groupsEl.innerHTML = '';
+
+    const grandTotal = items.reduce((sum, i) => sum + (i.estimatedValue || 0), 0);
+    document.getElementById('grand-total').textContent = currency(grandTotal);
+
+    if (items.length === 0) {
+      groupsEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🏠</div><p>No items yet.</p><p>Add furniture, electronics, appliances — anything worth documenting.</p></div>`;
+      return;
+    }
+
+    const byRoom = {};
+    items.forEach((i) => { (byRoom[i.room] = byRoom[i.room] || []).push(i); });
+
+    Object.keys(byRoom).sort().forEach((room) => {
+      const roomItems = byRoom[room].sort((a, b) => b.addedAt - a.addedAt);
+      const roomTotal = roomItems.reduce((sum, i) => sum + (i.estimatedValue || 0), 0);
+      const group = document.createElement('div');
+      group.className = 'room-group';
+      group.innerHTML = `
+        <div class="room-header">
+          <div class="room-name">${toolkitEscapeHtml(room)}</div>
+          <div class="room-total">${currency(roomTotal)}</div>
+        </div>
+        <div class="row-list" data-room-list></div>
+      `;
+      const listEl = group.querySelector('[data-room-list]');
+      roomItems.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'row-item';
+        row.style.cursor = 'pointer';
+        row.innerHTML = `
+          ${item.photoDataUrl ? `<img class="row-thumb" src="${item.photoDataUrl}" alt="">` : `<div class="row-thumb" style="display:flex;align-items:center;justify-content:center;">📦</div>`}
+          <div class="row-main">
+            <div class="row-title">${toolkitEscapeHtml(item.name)}</div>
+            <div class="row-sub">${currency(item.estimatedValue)}${item.serialNumber ? ' · S/N ' + toolkitEscapeHtml(item.serialNumber) : ''}</div>
+          </div>
+        `;
+        row.addEventListener('click', () => openItemModal(item));
+        listEl.appendChild(row);
+      });
+      groupsEl.appendChild(group);
+    });
+  }
+
+  // ---------- CSV export ----------
+  document.getElementById('csv-btn').addEventListener('click', async () => {
+    const items = await dbGetAll('home_inventory');
+    if (items.length === 0) { toolkitToast('No items to export', { danger: true }); return; }
+    const header = ['Room', 'Item', 'Estimated Value', 'Purchase Date', 'Serial/Model Number', 'Notes'];
+    const csvEscape = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+    const rows = items.map((i) => [i.room, i.name, i.estimatedValue || 0, i.purchaseDate || '', i.serialNumber || '', i.notes || ''].map(csvEscape).join(','));
+    const csv = [header.map(csvEscape).join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `home-inventory-${dateStamp()}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+
+  function dateStamp() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // ---------- Print report ----------
+  document.getElementById('print-btn').addEventListener('click', async () => {
+    const items = await dbGetAll('home_inventory');
+    if (items.length === 0) { toolkitToast('No items to print', { danger: true }); return; }
+
+    document.getElementById('print-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const grandTotal = items.reduce((sum, i) => sum + (i.estimatedValue || 0), 0);
+    document.getElementById('print-total').textContent = `Total estimated value: ${currency(grandTotal)}`;
+
+    const byRoom = {};
+    items.forEach((i) => { (byRoom[i.room] = byRoom[i.room] || []).push(i); });
+
+    const contentEl = document.getElementById('print-content');
+    contentEl.innerHTML = Object.keys(byRoom).sort().map((room) => {
+      const roomItems = byRoom[room];
+      const roomTotal = roomItems.reduce((sum, i) => sum + (i.estimatedValue || 0), 0);
+      return `
+        <div class="print-room">${toolkitEscapeHtml(room)} — ${currency(roomTotal)}</div>
+        ${roomItems.map((item) => `
+          <div class="print-item">
+            ${item.photoDataUrl ? `<img src="${item.photoDataUrl}" alt="">` : ''}
+            <div>
+              <div class="name">${toolkitEscapeHtml(item.name)} — ${currency(item.estimatedValue)}</div>
+              <div class="meta">${item.purchaseDate ? 'Purchased ' + item.purchaseDate + ' · ' : ''}${item.serialNumber ? 'S/N ' + toolkitEscapeHtml(item.serialNumber) : ''}</div>
+              ${item.notes ? `<div class="meta">${toolkitEscapeHtml(item.notes)}</div>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      `;
+    }).join('');
+
+    window.print();
+  });
+
+  refresh();
+</script>
+</body>
+</html>

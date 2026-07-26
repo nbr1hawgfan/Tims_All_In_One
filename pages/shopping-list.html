@@ -22,6 +22,22 @@
     font-size: 0.85rem; color: #fff;
   }
   .check-circle.checked { background: var(--success); border-color: var(--success); }
+  .export-row { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
+  .export-row button { flex: 1; min-width: 90px; }
+
+  #print-area { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area { display: block; position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
+    #print-area h1 { font-size: 1.4rem; margin-bottom: 2px; }
+    #print-area .print-date { font-size: 0.8rem; color: #555; margin-bottom: 16px; }
+    #print-area ul { list-style: none; padding: 0; }
+    #print-area li { padding: 6px 0; border-bottom: 1px solid #ddd; font-size: 1rem; }
+    #print-area .box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #333; margin-right: 10px; vertical-align: middle; }
+    #print-area .box.checked { background: #333; }
+    #print-area li.checked { color: #999; text-decoration: line-through; }
+  }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -39,8 +55,20 @@
 
   <div class="row-list" id="shopping-list"></div>
 
-  <button class="btn secondary block" id="clear-checked-btn" style="margin-top:18px;">Clear checked items</button>
+  <div class="export-row">
+    <button class="btn secondary" id="share-btn">📤 Share</button>
+    <button class="btn secondary" id="print-btn">🖨️ Print</button>
+    <button class="btn secondary" id="copy-list-btn">📋 Copy</button>
+  </div>
+
+  <button class="btn secondary block" id="clear-checked-btn">Clear checked items</button>
 </main>
+
+<div id="print-area">
+  <h1>Shopping List</h1>
+  <div class="print-date" id="print-date"></div>
+  <ul id="print-list"></ul>
+</div>
 
 <script src="../js/db.js"></script>
 <script src="../js/app.js"></script>
@@ -57,6 +85,49 @@
 
   document.getElementById('add-btn').addEventListener('click', addItem);
   newItemEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
+
+  async function currentItems() {
+    return (await dbGetAll('shopping')).sort((a, b) => {
+      if (a.checked !== b.checked) return a.checked ? 1 : -1;
+      return b.addedAt - a.addedAt;
+    });
+  }
+
+  function listAsText(items) {
+    if (items.length === 0) return 'Shopping list is empty.';
+    return items.map((i) => `${i.checked ? '[x]' : '[ ]'} ${i.name}${i.note ? ' (' + i.note + ')' : ''}`).join('\n');
+  }
+
+  document.getElementById('share-btn').addEventListener('click', async () => {
+    const items = await currentItems();
+    if (items.length === 0) { toolkitToast('Your list is empty', { danger: true }); return; }
+    const text = listAsText(items);
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Shopping List', text }); }
+      catch (e) { /* user cancelled — no error needed */ }
+    } else {
+      window.location.href = `mailto:?subject=${encodeURIComponent('Shopping List')}&body=${encodeURIComponent(text)}`;
+    }
+  });
+
+  document.getElementById('copy-list-btn').addEventListener('click', async () => {
+    const items = await currentItems();
+    if (items.length === 0) { toolkitToast('Your list is empty', { danger: true }); return; }
+    try { await navigator.clipboard.writeText(listAsText(items)); toolkitToast('List copied'); }
+    catch { toolkitToast('Could not copy', { danger: true }); }
+  });
+
+  document.getElementById('print-btn').addEventListener('click', async () => {
+    const items = await currentItems();
+    if (items.length === 0) { toolkitToast('Your list is empty', { danger: true }); return; }
+    document.getElementById('print-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    document.getElementById('print-list').innerHTML = items.map((i) => `
+      <li class="${i.checked ? 'checked' : ''}">
+        <span class="box ${i.checked ? 'checked' : ''}"></span>${toolkitEscapeHtml(i.name)}${i.note ? ' — ' + toolkitEscapeHtml(i.note) : ''}
+      </li>
+    `).join('');
+    window.print();
+  });
 
   document.getElementById('clear-checked-btn').addEventListener('click', async () => {
     const all = await dbGetAll('shopping');

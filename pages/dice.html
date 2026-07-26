@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dice &amp; Random — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .mode-toggle { display: flex; gap: 8px; margin-bottom: 18px; }
+  .mode-toggle button {
+    flex: 1; padding: 10px 0; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-family: var(--font-display); font-weight: 700; cursor: pointer;
+  }
+  .mode-toggle button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .die-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; min-height: 70px; }
+  .die-face {
+    width: 64px; height: 64px; border-radius: 14px; background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-family: var(--font-mono);
+    font-size: 1.4rem; font-weight: 700; box-shadow: var(--shadow-sm);
+  }
+  .side-select { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .side-select button {
+    flex: 1; min-width: 56px; padding: 10px 0; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-family: var(--font-mono); font-weight: 700; cursor: pointer; color: var(--primary-dark);
+  }
+  .side-select button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .count-row { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 18px; }
+  .count-row button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); font-size: 1.1rem; font-weight: 700; cursor: pointer; color: var(--primary-dark); }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Dice &amp; Random</h1></div>
+</header>
+
+<main class="shell">
+  <div class="mode-toggle">
+    <button id="mode-dice" class="active">Dice</button>
+    <button id="mode-number">Random Number</button>
+  </div>
+
+  <!-- ============ DICE ============ -->
+  <div id="panel-dice">
+    <div class="card">
+      <label>Die type</label>
+      <div class="side-select" id="side-select">
+        <button data-sides="4">d4</button>
+        <button data-sides="6" class="active">d6</button>
+        <button data-sides="8">d8</button>
+        <button data-sides="10">d10</button>
+        <button data-sides="12">d12</button>
+        <button data-sides="20">d20</button>
+      </div>
+      <label>Number of dice</label>
+      <div class="count-row">
+        <button id="dice-minus">−</button>
+        <div class="mono" id="dice-count" style="font-size:1.1rem; min-width:24px; text-align:center;">2</div>
+        <button id="dice-plus">+</button>
+      </div>
+      <button class="btn block" id="roll-btn">Roll</button>
+    </div>
+    <div class="die-grid" id="die-grid"></div>
+    <div class="result-panel" id="dice-total-panel" style="display:none; text-align:center;">
+      <div class="label">Total</div>
+      <div class="big-number" id="dice-total">0</div>
+    </div>
+  </div>
+
+  <!-- ============ RANDOM NUMBER ============ -->
+  <div id="panel-number" style="display:none;">
+    <div class="card">
+      <div class="field-row">
+        <div>
+          <label for="num-min">Minimum</label>
+          <input type="number" id="num-min" inputmode="numeric" value="1">
+        </div>
+        <div>
+          <label for="num-max">Maximum</label>
+          <input type="number" id="num-max" inputmode="numeric" value="100">
+        </div>
+      </div>
+      <button class="btn block" id="num-generate-btn">Generate</button>
+    </div>
+    <div class="result-panel" style="text-align:center;">
+      <div class="label">Result</div>
+      <div class="big-number" id="num-result">—</div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  document.getElementById('mode-dice').addEventListener('click', () => setMode('dice'));
+  document.getElementById('mode-number').addEventListener('click', () => setMode('number'));
+  function setMode(mode) {
+    document.getElementById('mode-dice').classList.toggle('active', mode === 'dice');
+    document.getElementById('mode-number').classList.toggle('active', mode === 'number');
+    document.getElementById('panel-dice').style.display = mode === 'dice' ? '' : 'none';
+    document.getElementById('panel-number').style.display = mode === 'number' ? '' : 'none';
+  }
+
+  // ---------- Dice ----------
+  let sides = 6;
+  let diceCount = 2;
+
+  document.querySelectorAll('#side-select button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#side-select button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      sides = parseInt(btn.dataset.sides, 10);
+    });
+  });
+  document.getElementById('dice-minus').addEventListener('click', () => {
+    diceCount = Math.max(1, diceCount - 1);
+    document.getElementById('dice-count').textContent = diceCount;
+  });
+  document.getElementById('dice-plus').addEventListener('click', () => {
+    diceCount = Math.min(12, diceCount + 1);
+    document.getElementById('dice-count').textContent = diceCount;
+  });
+
+  function secureRandomInt(max) {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] % max;
+  }
+
+  document.getElementById('roll-btn').addEventListener('click', () => {
+    const gridEl = document.getElementById('die-grid');
+    gridEl.innerHTML = '';
+    let total = 0;
+    for (let i = 0; i < diceCount; i++) {
+      const val = secureRandomInt(sides) + 1;
+      total += val;
+      const face = document.createElement('div');
+      face.className = 'die-face';
+      face.textContent = val;
+      gridEl.appendChild(face);
+    }
+    document.getElementById('dice-total').textContent = total;
+    document.getElementById('dice-total-panel').style.display = diceCount > 1 ? '' : 'none';
+    try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+  });
+
+  // ---------- Random number ----------
+  document.getElementById('num-generate-btn').addEventListener('click', () => {
+    const min = parseInt(document.getElementById('num-min').value, 10) || 0;
+    const max = parseInt(document.getElementById('num-max').value, 10) || 0;
+    if (max <= min) { toolkitToast('Maximum must be greater than minimum', { danger: true }); return; }
+    const result = min + secureRandomInt(max - min + 1);
+    document.getElementById('num-result').textContent = result.toLocaleString();
+    try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scan Anything — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  #reader { width: 100%; border-radius: var(--radius-md); overflow: hidden; margin-bottom: 12px; background: #000; min-height: 260px; }
+  #reader video { border-radius: var(--radius-md); width: 100% !important; }
+  .scan-frame-wrap { position: relative; }
+  .scan-reticle {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 260px; height: 140px; max-width: 78%;
+    border: 3px solid rgba(255,255,255,0.9); border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+    pointer-events: none;
+  }
+  .scan-status { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; }
+  .result-text { font-family: var(--font-mono); font-size: 1rem; word-break: break-all; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Scan Anything</h1></div>
+</header>
+
+<main class="shell">
+  <div class="scan-status" id="scan-status">Point your camera at any QR code or barcode</div>
+  <div class="scan-frame-wrap">
+    <div id="reader"></div>
+    <div class="scan-reticle" aria-hidden="true"></div>
+  </div>
+  <button class="btn secondary block" id="rescan-btn" style="display:none;">Scan another</button>
+
+  <div class="result-panel" id="result-panel" style="display:none;">
+    <div class="label" id="result-label">Scanned</div>
+    <div class="result-text" id="result-text"></div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn secondary" id="copy-btn" style="flex:1;">Copy</button>
+      <button class="btn" id="open-btn" style="flex:1; display:none;">Open link</button>
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  let html5QrCode = null;
+
+  function scanFormats() {
+    if (typeof Html5QrcodeSupportedFormats === 'undefined') return undefined;
+    return [
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.CODE_93,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.CODABAR,
+      Html5QrcodeSupportedFormats.DATA_MATRIX,
+      Html5QrcodeSupportedFormats.PDF_417,
+      Html5QrcodeSupportedFormats.AZTEC,
+    ].filter((v) => v !== undefined);
+  }
+
+  function scanConfig() {
+    return {
+      fps: 10,
+      qrbox: { width: 260, height: 140 },
+      formatsToSupport: scanFormats(),
+      videoConstraints: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+    };
+  }
+
+  async function onScanSuccess(decodedText) {
+    stopScan();
+    try { navigator.vibrate && navigator.vibrate(70); } catch (e) {}
+    showResult(decodedText);
+  }
+
+  function looksLikeUrl(text) {
+    return /^https?:\/\//i.test(text.trim());
+  }
+
+  function showResult(text) {
+    document.getElementById('result-panel').style.display = '';
+    document.getElementById('rescan-btn').style.display = '';
+    document.getElementById('result-label').textContent = looksLikeUrl(text) ? 'Link found' : 'Scanned content';
+    document.getElementById('result-text').textContent = text;
+    const openBtn = document.getElementById('open-btn');
+    if (looksLikeUrl(text)) {
+      openBtn.style.display = '';
+      openBtn.onclick = () => window.open(text, '_blank', 'noopener');
+    } else {
+      openBtn.style.display = 'none';
+    }
+    document.getElementById('copy-btn').onclick = async () => {
+      try { await navigator.clipboard.writeText(text); toolkitToast('Copied'); }
+      catch { toolkitToast('Could not copy', { danger: true }); }
+    };
+    document.getElementById('scan-status').textContent = 'Scanned! Tap "Scan another" to go again.';
+  }
+
+  async function startScan() {
+    const statusEl = document.getElementById('scan-status');
+    document.getElementById('result-panel').style.display = 'none';
+    document.getElementById('rescan-btn').style.display = 'none';
+    if (typeof Html5Qrcode === 'undefined') {
+      statusEl.textContent = 'Scanner library failed to load — check your connection.';
+      return;
+    }
+    statusEl.textContent = 'Starting camera…';
+    document.getElementById('reader').innerHTML = '';
+    html5QrCode = new Html5Qrcode('reader');
+    const config = scanConfig();
+    try {
+      const devices = await Html5Qrcode.getCameras();
+      if (!devices || !devices.length) throw new Error('No camera found');
+      const back = devices.find((d) => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1];
+      statusEl.textContent = 'Point your camera at any QR code or barcode';
+      await html5QrCode.start(back.id, config, onScanSuccess, () => {});
+    } catch (err) {
+      try {
+        statusEl.textContent = 'Point your camera at any QR code or barcode';
+        await html5QrCode.start({ facingMode: 'environment' }, config, onScanSuccess, () => {});
+      } catch (err2) {
+        statusEl.textContent = 'Camera access was blocked — check your browser permissions.';
+      }
+    }
+  }
+
+  function stopScan() {
+    if (html5QrCode) {
+      const inst = html5QrCode;
+      html5QrCode = null;
+      try { inst.stop().then(() => inst.clear()).catch(() => {}); } catch (e) {}
+    }
+  }
+
+  document.getElementById('rescan-btn').addEventListener('click', startScan);
+  startScan();
+  window.addEventListener('beforeunload', stopScan);
+</script>
+</body>
+</html>

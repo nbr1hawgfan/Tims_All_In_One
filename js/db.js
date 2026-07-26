@@ -4,7 +4,7 @@
    ============================================================ */
 
 const TOOLKIT_DB_NAME = 'personal-toolkit-db';
-const TOOLKIT_DB_VERSION = 2;
+const TOOLKIT_DB_VERSION = 4;
 
 const TOOLKIT_STORES = [
   'pantry',      // { id, name, brand, barcode, qty, category, lowStock, addedAt, imageDataUrl }
@@ -18,6 +18,9 @@ const TOOLKIT_STORES = [
   'protein',     // { id, ts, dateKey, grams }
   'settings',    // { id, value }  (generic key/value: goals, spinner custom list, etc.)
   'spinner_history', // { id, ts, winner }
+  'home_inventory', // { id, name, room, estimatedValue, purchaseDate, serialNumber, notes, photoDataUrl, addedAt }
+  'sleep',       // { id: 'sleep-YYYY-MM-DD', dateKey, hours, quality, note }
+  'blood_pressure', // { id, ts, dateKey, systolic, diastolic, pulse, note }
 ];
 
 function toolkitOpenDB() {

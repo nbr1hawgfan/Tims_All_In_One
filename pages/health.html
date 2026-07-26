@@ -47,6 +47,8 @@
 <main class="shell">
   <div class="tab-row">
     <button id="tab-body" class="active">Body</button>
+    <button id="tab-sleep">Sleep</button>
+    <button id="tab-bp">Blood Pressure</button>
     <button id="tab-steps">Steps</button>
     <button id="tab-water">Water</button>
     <button id="tab-protein">Protein</button>
@@ -112,6 +114,60 @@
 
     <div class="shelf-label" style="margin-top:20px;">History</div>
     <div class="row-list" id="history-list"></div>
+  </div>
+
+  <!-- ============ SLEEP ============ -->
+  <div id="panel-sleep" style="display:none;">
+    <div class="today-hero">
+      <div class="num" id="sleep-today">—</div>
+      <div class="sub">hours logged last night</div>
+    </div>
+    <div class="card">
+      <label for="sleep-hours">Hours slept</label>
+      <input type="number" id="sleep-hours" inputmode="decimal" step="0.25" placeholder="e.g. 7.5">
+      <label for="sleep-quality">Sleep quality</label>
+      <select id="sleep-quality">
+        <option value="">Not rated</option>
+        <option value="Poor">Poor</option>
+        <option value="Fair">Fair</option>
+        <option value="Good">Good</option>
+        <option value="Excellent">Excellent</option>
+      </select>
+      <label for="sleep-note">Note (optional)</label>
+      <input type="text" id="sleep-note" placeholder="e.g. woke up a few times">
+      <button class="btn block" id="sleep-log-btn">Save</button>
+    </div>
+    <div class="shelf-label">History</div>
+    <div class="row-list" id="sleep-history"></div>
+  </div>
+
+  <!-- ============ BLOOD PRESSURE ============ -->
+  <div id="panel-bp" style="display:none;">
+    <div class="result-panel" style="text-align:center;">
+      <div class="label">Latest reading</div>
+      <div class="big-number" id="bp-latest">—</div>
+      <div id="bp-latest-chip" style="margin-top:8px;"></div>
+    </div>
+    <div class="card">
+      <div class="field-row">
+        <div>
+          <label for="bp-systolic">Systolic</label>
+          <input type="number" id="bp-systolic" inputmode="numeric" placeholder="e.g. 118">
+        </div>
+        <div>
+          <label for="bp-diastolic">Diastolic</label>
+          <input type="number" id="bp-diastolic" inputmode="numeric" placeholder="e.g. 76">
+        </div>
+      </div>
+      <label for="bp-pulse">Pulse (optional)</label>
+      <input type="number" id="bp-pulse" inputmode="numeric" placeholder="e.g. 68">
+      <label for="bp-note">Note (optional)</label>
+      <input type="text" id="bp-note" placeholder="e.g. after coffee, resting">
+      <button class="btn block" id="bp-log-btn">Log reading</button>
+    </div>
+    <p class="helper-text" style="text-align:center;">Categories shown are the standard AHA reference ranges for information only — not medical advice. Talk to a doctor about your numbers, especially anything in the higher ranges.</p>
+    <div class="shelf-label">History</div>
+    <div class="row-list" id="bp-history"></div>
   </div>
 
   <!-- ============ STEPS ============ -->
@@ -196,7 +252,7 @@
   // ============================================================
   // Tabs
   // ============================================================
-  const TABS = ['body', 'steps', 'water', 'protein'];
+  const TABS = ['body', 'sleep', 'bp', 'steps', 'water', 'protein'];
   function setTab(tab) {
     TABS.forEach((t) => {
       document.getElementById('tab-' + t).classList.toggle('active', t === tab);
@@ -329,6 +385,130 @@
     noteEl.value = '';
     toolkitToast('Entry logged');
     refreshBody();
+  });
+
+  // ============================================================
+  // SLEEP — one entry per day, logging again overwrites it
+  // ============================================================
+  async function refreshSleep() {
+    const all = (await dbGetAll('sleep')).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+    const today = dateKey();
+    const todayEntry = all.find((e) => e.dateKey === today);
+    document.getElementById('sleep-today').textContent = todayEntry ? todayEntry.hours + 'h' : '—';
+    document.getElementById('sleep-hours').value = todayEntry ? todayEntry.hours : '';
+    document.getElementById('sleep-quality').value = todayEntry ? (todayEntry.quality || '') : '';
+    document.getElementById('sleep-note').value = todayEntry ? (todayEntry.note || '') : '';
+
+    const listEl = document.getElementById('sleep-history');
+    listEl.innerHTML = '';
+    const past = all.filter((e) => e.dateKey !== today);
+    if (past.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><p>No earlier nights logged yet.</p></div>`;
+      return;
+    }
+    past.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = 'row-item';
+      row.innerHTML = `
+        <div class="row-main">
+          <div class="row-title">${entry.hours}h${entry.quality ? ' · ' + entry.quality : ''}</div>
+          <div class="row-sub">${prettyDateKey(entry.dateKey)}${entry.note ? ' · ' + toolkitEscapeHtml(entry.note) : ''}</div>
+        </div>
+        <button class="icon-btn danger" aria-label="Delete entry">✕</button>
+      `;
+      row.querySelector('button').addEventListener('click', async () => {
+        await dbDelete('sleep', entry.id);
+        toolkitToast('Entry removed');
+        refreshSleep();
+      });
+      listEl.appendChild(row);
+    });
+  }
+
+  document.getElementById('sleep-log-btn').addEventListener('click', async () => {
+    const hours = parseFloat(document.getElementById('sleep-hours').value);
+    if (!hours && hours !== 0) { toolkitToast('Enter hours slept', { danger: true }); return; }
+    const key = dateKey();
+    await dbPut('sleep', {
+      id: 'sleep-' + key,
+      dateKey: key,
+      hours,
+      quality: document.getElementById('sleep-quality').value,
+      note: document.getElementById('sleep-note').value.trim(),
+    });
+    toolkitToast('Sleep logged');
+    refreshSleep();
+  });
+
+  // ============================================================
+  // BLOOD PRESSURE — multiple readings per day, AHA reference categories
+  // ============================================================
+  function bpCategory(systolic, diastolic) {
+    if (systolic > 180 || diastolic > 120) return { text: 'Hypertensive Crisis', cls: 'danger' };
+    if (systolic >= 140 || diastolic >= 90) return { text: 'High BP (Stage 2)', cls: 'danger' };
+    if (systolic >= 130 || diastolic >= 80) return { text: 'High BP (Stage 1)', cls: 'accent' };
+    if (systolic >= 120) return { text: 'Elevated', cls: 'accent' };
+    return { text: 'Normal', cls: 'success' };
+  }
+
+  async function refreshBp() {
+    const all = (await dbGetAll('blood_pressure')).sort((a, b) => b.ts - a.ts);
+    const latestEl = document.getElementById('bp-latest');
+    const chipEl = document.getElementById('bp-latest-chip');
+    if (all.length === 0) {
+      latestEl.textContent = '—';
+      chipEl.innerHTML = '';
+    } else {
+      const l = all[0];
+      latestEl.textContent = `${l.systolic}/${l.diastolic}`;
+      const cat = bpCategory(l.systolic, l.diastolic);
+      chipEl.innerHTML = `<span class="chip ${cat.cls}">${cat.text}</span>`;
+    }
+
+    const listEl = document.getElementById('bp-history');
+    listEl.innerHTML = '';
+    if (all.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><p>No readings logged yet.</p></div>`;
+      return;
+    }
+    all.forEach((entry) => {
+      const cat = bpCategory(entry.systolic, entry.diastolic);
+      const row = document.createElement('div');
+      row.className = 'row-item';
+      row.innerHTML = `
+        <div class="row-main">
+          <div class="row-title">${entry.systolic}/${entry.diastolic}${entry.pulse ? ' · ' + entry.pulse + ' bpm' : ''} <span class="chip ${cat.cls}">${cat.text}</span></div>
+          <div class="row-sub">${new Date(entry.ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}${entry.note ? ' · ' + toolkitEscapeHtml(entry.note) : ''}</div>
+        </div>
+        <button class="icon-btn danger" aria-label="Delete entry">✕</button>
+      `;
+      row.querySelector('button').addEventListener('click', async () => {
+        await dbDelete('blood_pressure', entry.id);
+        toolkitToast('Reading removed');
+        refreshBp();
+      });
+      listEl.appendChild(row);
+    });
+  }
+
+  document.getElementById('bp-log-btn').addEventListener('click', async () => {
+    const systolic = parseInt(document.getElementById('bp-systolic').value, 10);
+    const diastolic = parseInt(document.getElementById('bp-diastolic').value, 10);
+    if (!systolic || !diastolic) { toolkitToast('Enter both systolic and diastolic', { danger: true }); return; }
+    await dbPut('blood_pressure', {
+      id: toolkitId(),
+      ts: Date.now(),
+      dateKey: dateKey(),
+      systolic, diastolic,
+      pulse: parseInt(document.getElementById('bp-pulse').value, 10) || null,
+      note: document.getElementById('bp-note').value.trim(),
+    });
+    document.getElementById('bp-systolic').value = '';
+    document.getElementById('bp-diastolic').value = '';
+    document.getElementById('bp-pulse').value = '';
+    document.getElementById('bp-note').value = '';
+    toolkitToast('Reading logged');
+    refreshBp();
   });
 
   // ============================================================
@@ -483,6 +663,8 @@
   // Init
   // ============================================================
   refreshBody();
+  refreshSleep();
+  refreshBp();
   refreshSteps();
   waterTracker.refresh();
   proteinTracker.refresh();

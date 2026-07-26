@@ -37,6 +37,21 @@
   }
   .pb-ball.white { background: #ffffff; border: 2px solid var(--border); color: var(--text); }
   .pb-ball.red { background: #c0392b; color: #fff; }
+  .die-face { transition: transform 0.15s ease; }
+  .die-face.rolling { animation: dieRoll 0.4s ease-in-out infinite; }
+  @keyframes dieRoll {
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(-18deg) scale(1.08); }
+    50% { transform: rotate(12deg) scale(0.92); }
+    75% { transform: rotate(-10deg) scale(1.06); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+  .die-face.settle { animation: dieSettle 0.3s ease-out; }
+  @keyframes dieSettle {
+    0% { transform: scale(1.35) rotate(18deg); }
+    60% { transform: scale(0.9) rotate(-6deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -153,21 +168,49 @@
     return arr[0] % max;
   }
 
+  let rolling = false;
   document.getElementById('roll-btn').addEventListener('click', () => {
+    if (rolling) return;
+    rolling = true;
+    document.getElementById('roll-btn').disabled = true;
+    document.getElementById('dice-total-panel').style.display = 'none';
+
+    const finalValues = [];
+    for (let i = 0; i < diceCount; i++) finalValues.push(secureRandomInt(sides) + 1);
+
     const gridEl = document.getElementById('die-grid');
     gridEl.innerHTML = '';
-    let total = 0;
+    const faces = [];
     for (let i = 0; i < diceCount; i++) {
-      const val = secureRandomInt(sides) + 1;
-      total += val;
       const face = document.createElement('div');
-      face.className = 'die-face';
-      face.textContent = val;
+      face.className = 'die-face rolling';
+      face.textContent = secureRandomInt(sides) + 1;
       gridEl.appendChild(face);
+      faces.push(face);
     }
-    document.getElementById('dice-total').textContent = total;
-    document.getElementById('dice-total-panel').style.display = diceCount > 1 ? '' : 'none';
-    try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+
+    const flickerTimers = faces.map((face) => setInterval(() => {
+      face.textContent = secureRandomInt(sides) + 1;
+    }, 60));
+
+    faces.forEach((face, i) => {
+      const stopDelay = 500 + i * 130;
+      setTimeout(() => {
+        clearInterval(flickerTimers[i]);
+        face.textContent = finalValues[i];
+        face.classList.remove('rolling');
+        face.classList.add('settle');
+        face.addEventListener('animationend', () => face.classList.remove('settle'), { once: true });
+        try { navigator.vibrate && navigator.vibrate(25); } catch (e) {}
+        if (i === faces.length - 1) {
+          const total = finalValues.reduce((a, b) => a + b, 0);
+          document.getElementById('dice-total').textContent = total;
+          document.getElementById('dice-total-panel').style.display = diceCount > 1 ? '' : 'none';
+          document.getElementById('roll-btn').disabled = false;
+          rolling = false;
+        }
+      }, stopDelay);
+    });
   });
 
   // ---------- Random number ----------

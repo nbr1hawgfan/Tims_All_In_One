@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meal Picker — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .cat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .cat-chip {
+    padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); font-size: 0.82rem; font-weight: 600; cursor: pointer; color: var(--text-muted);
+  }
+  .cat-chip.active { background: var(--primary-wash); color: var(--primary-dark); border-color: var(--primary-light); }
+  .pool-count { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; }
+
+  .wheel-wrap { position: relative; width: 100%; max-width: 320px; margin: 0 auto 18px; }
+  .wheel-pointer {
+    position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent;
+    border-top: 22px solid var(--primary-dark); z-index: 2; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.25));
+  }
+  #wheel-svg { width: 100%; height: auto; display: block; transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
+  .wheel-center-btn {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 74px; height: 74px; border-radius: 50%; border: 4px solid var(--surface);
+    background: var(--primary); color: #fff; font-family: var(--font-display); font-weight: 800;
+    font-size: 0.85rem; cursor: pointer; box-shadow: var(--shadow-md); z-index: 3;
+  }
+  .wheel-center-btn:disabled { opacity: 0.6; cursor: default; }
+
+  .winner-banner {
+    display: none; text-align: center; background: var(--primary-wash); border-radius: var(--radius-lg);
+    padding: 20px; margin-bottom: 18px;
+  }
+  .winner-banner.show { display: block; }
+  .winner-banner .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .winner-banner .name { font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; color: var(--primary-dark); margin-top: 4px; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Meal Picker</h1></div>
+</header>
+
+<main class="shell">
+  <div class="winner-banner" id="winner-banner">
+    <div class="label">Tonight we're eating at</div>
+    <div class="name" id="winner-name">—</div>
+  </div>
+
+  <div class="wheel-wrap">
+    <div class="wheel-pointer"></div>
+    <svg id="wheel-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg"></svg>
+    <button class="wheel-center-btn" id="spin-btn">SPIN</button>
+  </div>
+  <p class="pool-count" id="pool-count">0 places in the mix</p>
+
+  <div class="card">
+    <label>Categories</label>
+    <div class="cat-chips" id="cat-chips"></div>
+
+    <label for="custom-input">Add your own place</label>
+    <div style="display:flex; gap:8px; margin-bottom:8px;">
+      <input type="text" id="custom-input" placeholder="e.g. that local place you like" style="margin-bottom:0;">
+      <button class="btn secondary" id="custom-add-btn" style="flex-shrink:0;">Add</button>
+    </div>
+    <div id="custom-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+  </div>
+
+  <div class="shelf-label" id="recent-label" style="display:none;">Recent picks</div>
+  <div class="row-list" id="recent-list"></div>
+</main>
+
+<script src="../js/db.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const CHAIN_CATEGORIES = {
+    'Fast Food': ["McDonald's", "Burger King", "Wendy's", "Taco Bell", "Chick-fil-A", "Sonic Drive-In", "Arby's", "Culver's", "Five Guys", "Popeyes", "KFC", "Whataburger"],
+    'Pizza': ["Pizza Hut", "Domino's", "Papa John's", "Little Caesars", "Marco's Pizza"],
+    'Mexican': ["Chipotle", "Moe's Southwest Grill", "Qdoba", "Del Taco", "El Pollo Loco"],
+    'Sandwiches & Subs': ["Subway", "Jimmy John's", "Jersey Mike's", "Firehouse Subs", "Panera Bread"],
+    'Sit-Down / Casual': ["Applebee's", "Chili's", "Olive Garden", "Texas Roadhouse", "Outback Steakhouse", "Cracker Barrel", "Red Lobster", "Cheddar's Scratch Kitchen", "Logan's Roadhouse"],
+    'Breakfast & Coffee': ["IHOP", "Denny's", "Waffle House", "Starbucks", "Dunkin'"],
+    'Asian': ["Panda Express", "P.F. Chang's"],
+  };
+  const WHEEL_COLORS = ['#0a5870', '#128aa3', '#1c95ad', '#073e50', '#d9a441', '#c2853a', '#2f9e63', '#5c7278'];
+
+  let activeCategories = new Set(Object.keys(CHAIN_CATEGORIES));
+  let customEntries = [];
+  let currentPool = [];
+  let totalRotation = 0;
+  let spinning = false;
+
+  // ---------- Category chips ----------
+  const chipsEl = document.getElementById('cat-chips');
+  Object.keys(CHAIN_CATEGORIES).forEach((cat) => {
+    const chip = document.createElement('div');
+    chip.className = 'cat-chip active';
+    chip.textContent = cat;
+    chip.addEventListener('click', () => {
+      if (activeCategories.has(cat)) activeCategories.delete(cat);
+      else activeCategories.add(cat);
+      chip.classList.toggle('active');
+      rebuildPool();
+    });
+    chipsEl.appendChild(chip);
+  });
+
+  // ---------- Custom entries (persisted) ----------
+  async function loadCustomEntries() {
+    const rec = await dbGet('settings', 'spinner_custom').catch(() => null);
+    customEntries = (rec && Array.isArray(rec.value)) ? rec.value : [];
+  }
+  async function saveCustomEntries() {
+    await dbPut('settings', { id: 'spinner_custom', value: customEntries });
+  }
+  function renderCustomList() {
+    const listEl = document.getElementById('custom-list');
+    listEl.innerHTML = '';
+    customEntries.forEach((name, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'chip accent';
+      chip.style.cursor = 'pointer';
+      chip.innerHTML = `${toolkitEscapeHtml(name)} ✕`;
+      chip.addEventListener('click', async () => {
+        customEntries.splice(i, 1);
+        await saveCustomEntries();
+        renderCustomList();
+        rebuildPool();
+      });
+      listEl.appendChild(chip);
+    });
+  }
+  document.getElementById('custom-add-btn').addEventListener('click', async () => {
+    const input = document.getElementById('custom-input');
+    const name = input.value.trim();
+    if (!name) { toolkitToast('Type a place name first', { danger: true }); return; }
+    customEntries.push(name);
+    await saveCustomEntries();
+    input.value = '';
+    renderCustomList();
+    rebuildPool();
+  });
+  document.getElementById('custom-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('custom-add-btn').click();
+  });
+
+  // ---------- Build pool & wheel ----------
+  function rebuildPool() {
+    const pool = [];
+    activeCategories.forEach((cat) => pool.push(...CHAIN_CATEGORIES[cat]));
+    pool.push(...customEntries);
+    currentPool = pool;
+    document.getElementById('pool-count').textContent = `${pool.length} place${pool.length === 1 ? '' : 's'} in the mix`;
+    document.getElementById('spin-btn').disabled = pool.length < 2;
+    drawWheel();
+  }
+
+  function pointOnWheel(angleDeg, r, cx, cy) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
+  }
+
+  function drawWheel() {
+    const svg = document.getElementById('wheel-svg');
+    svg.innerHTML = '';
+    const n = currentPool.length;
+    if (n === 0) return;
+    const cx = 150, cy = 150, r = 145;
+    const seg = 360 / n;
+
+    for (let i = 0; i < n; i++) {
+      const startAngle = i * seg;
+      const endAngle = (i + 1) * seg;
+      const p1 = pointOnWheel(startAngle, r, cx, cy);
+      const p2 = pointOnWheel(endAngle, r, cx, cy);
+      const largeArc = seg > 180 ? 1 : 0;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M ${cx},${cy} L ${p1.x},${p1.y} A ${r},${r} 0 ${largeArc} 1 ${p2.x},${p2.y} Z`);
+      path.setAttribute('fill', WHEEL_COLORS[i % WHEEL_COLORS.length]);
+      path.setAttribute('stroke', '#ffffff');
+      path.setAttribute('stroke-width', '1');
+      svg.appendChild(path);
+    }
+  }
+
+  // ---------- Spin logic (rotation-targeting math verified separately) ----------
+  document.getElementById('spin-btn').addEventListener('click', () => {
+    if (spinning || currentPool.length < 2) return;
+    spinning = true;
+    document.getElementById('spin-btn').disabled = true;
+    document.getElementById('winner-banner').classList.remove('show');
+
+    const n = currentPool.length;
+    const winnerIndex = Math.floor(Math.random() * n);
+    const seg = 360 / n;
+    const currentMod = ((totalRotation % 360) + 360) % 360;
+    const desiredAbsolute = (360 - (winnerIndex * seg + seg / 2)) % 360;
+    const deltaNeeded = ((desiredAbsolute - currentMod) % 360 + 360) % 360;
+    totalRotation += 5 * 360 + deltaNeeded;
+
+    const svg = document.getElementById('wheel-svg');
+    svg.style.transform = `rotate(${totalRotation}deg)`;
+
+    setTimeout(async () => {
+      const winner = currentPool[winnerIndex];
+      document.getElementById('winner-name').textContent = winner;
+      document.getElementById('winner-banner').classList.add('show');
+      spinning = false;
+      document.getElementById('spin-btn').disabled = currentPool.length < 2;
+      try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (e) {}
+      await dbPut('spinner_history', { id: toolkitId(), ts: Date.now(), winner });
+      refreshRecent();
+    }, 4100);
+  });
+
+  async function refreshRecent() {
+    const all = (await dbGetAll('spinner_history')).sort((a, b) => b.ts - a.ts).slice(0, 10);
+    const label = document.getElementById('recent-label');
+    const listEl = document.getElementById('recent-list');
+    label.style.display = all.length ? '' : 'none';
+    listEl.innerHTML = '';
+    all.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = 'row-item';
+      row.innerHTML = `
+        <div class="row-main">
+          <div class="row-title">${toolkitEscapeHtml(entry.winner)}</div>
+          <div class="row-sub">${toolkitFormatDate(entry.ts)}</div>
+        </div>
+      `;
+      listEl.appendChild(row);
+    });
+  }
+
+  // ---------- Init ----------
+  (async () => {
+    await loadCustomEntries();
+    renderCustomList();
+    rebuildPool();
+    refreshRecent();
+  })();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Weight &amp; Body Tracker — Personal Toolkit</title>
+<title>Health Tracker — Personal Toolkit</title>
 <meta name="theme-color" content="#0a5870">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,89 +11,217 @@
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
 <style>
+  .tab-row { display: flex; gap: 6px; margin-bottom: 18px; overflow-x: auto; padding-bottom: 2px; }
+  .tab-row button {
+    flex: 1; min-width: 78px; padding: 10px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-family: var(--font-display); font-weight: 700; font-size: 0.82rem; cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab-row button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
   .metric-box { background: var(--primary-wash); border-radius: var(--radius-md); padding: 14px; text-align:center; }
   .metric-box .num { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; color: var(--primary-dark); }
   .metric-box .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .quick-add-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .quick-add-row button {
+    flex: 1; min-width: 64px; padding: 10px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-family: var(--font-mono); font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--primary-dark);
+  }
+  .quick-add-row button:hover { background: var(--primary-wash); }
+  .progress-track { height: 14px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden; margin: 8px 0; }
+  .progress-fill { height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.2s ease; }
+  .goal-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
+  .goal-row input { width: 70px; margin-bottom: 0; padding: 4px 8px; text-align: center; }
+  .today-hero { text-align: center; margin-bottom: 6px; }
+  .today-hero .num { font-family: var(--font-mono); font-size: 2.4rem; font-weight: 700; color: var(--primary-dark); line-height: 1; }
+  .today-hero .sub { color: var(--text-muted); font-size: 0.8rem; margin-top: 2px; }
 </style>
 </head>
 <body data-sw-path="../sw.js">
 
 <header class="app-header">
   <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
-  <div><h1>Weight &amp; Body Tracker</h1></div>
+  <div><h1>Health Tracker</h1></div>
 </header>
 
 <main class="shell">
-  <div class="card">
-    <div class="field-row">
-      <div>
-        <label for="weight">Weight (lb)</label>
-        <input type="number" id="weight" inputmode="decimal" placeholder="e.g. 185">
-      </div>
-      <div>
-        <label for="height">Height (in)</label>
-        <input type="number" id="height" inputmode="decimal" placeholder="e.g. 70">
-      </div>
-    </div>
-    <label for="bodyfat">Body fat % (optional — skip if unknown)</label>
-    <input type="number" id="bodyfat" inputmode="decimal" placeholder="e.g. 22">
+  <div class="tab-row">
+    <button id="tab-body" class="active">Body</button>
+    <button id="tab-steps">Steps</button>
+    <button id="tab-water">Water</button>
+    <button id="tab-protein">Protein</button>
+  </div>
 
-    <div id="navy-toggle" style="margin: -6px 0 16px; font-size: 0.82rem; color: var(--primary); cursor: pointer; text-decoration: underline;">
-      Don't know your body fat %? Estimate it (Navy method)
-    </div>
-    <div id="navy-calc" style="display:none; background: var(--surface-sunken); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
-      <div class="mode-toggle" style="display:flex; gap:8px; margin-bottom:12px;">
-        <button type="button" class="btn secondary" id="navy-sex-m" style="flex:1;">Male</button>
-        <button type="button" class="btn secondary" id="navy-sex-f" style="flex:1;">Female</button>
-      </div>
+  <!-- ============ BODY (weight / BMI / body fat) ============ -->
+  <div id="panel-body">
+    <div class="card">
       <div class="field-row">
         <div>
-          <label for="navy-neck">Neck (in)</label>
-          <input type="number" id="navy-neck" inputmode="decimal" placeholder="e.g. 15.5">
+          <label for="weight">Weight (lb)</label>
+          <input type="number" id="weight" inputmode="decimal" placeholder="e.g. 185">
         </div>
         <div>
-          <label for="navy-waist">Waist (in)</label>
-          <input type="number" id="navy-waist" inputmode="decimal" placeholder="e.g. 34">
+          <label for="height">Height (in)</label>
+          <input type="number" id="height" inputmode="decimal" placeholder="e.g. 70">
         </div>
       </div>
-      <div id="navy-hip-wrap" style="display:none;">
-        <label for="navy-hip">Hip (in)</label>
-        <input type="number" id="navy-hip" inputmode="decimal" placeholder="e.g. 38">
+      <label for="bodyfat">Body fat % (optional — skip if unknown)</label>
+      <input type="number" id="bodyfat" inputmode="decimal" placeholder="e.g. 22">
+
+      <div id="navy-toggle" style="margin: -6px 0 16px; font-size: 0.82rem; color: var(--primary); cursor: pointer; text-decoration: underline;">
+        Don't know your body fat %? Estimate it (Navy method)
       </div>
-      <p class="helper-text" style="margin-bottom:10px;">Measure neck just below the larynx, waist at the navel, and (for the female formula) hips at the widest point.</p>
-      <button class="btn secondary block" type="button" id="navy-calc-btn">Calculate body fat %</button>
+      <div id="navy-calc" style="display:none; background: var(--surface-sunken); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+        <div class="mode-toggle" style="display:flex; gap:8px; margin-bottom:12px;">
+          <button type="button" class="btn secondary" id="navy-sex-m" style="flex:1;">Male</button>
+          <button type="button" class="btn secondary" id="navy-sex-f" style="flex:1;">Female</button>
+        </div>
+        <div class="field-row">
+          <div>
+            <label for="navy-neck">Neck (in)</label>
+            <input type="number" id="navy-neck" inputmode="decimal" placeholder="e.g. 15.5">
+          </div>
+          <div>
+            <label for="navy-waist">Waist (in)</label>
+            <input type="number" id="navy-waist" inputmode="decimal" placeholder="e.g. 34">
+          </div>
+        </div>
+        <div id="navy-hip-wrap" style="display:none;">
+          <label for="navy-hip">Hip (in)</label>
+          <input type="number" id="navy-hip" inputmode="decimal" placeholder="e.g. 38">
+        </div>
+        <p class="helper-text" style="margin-bottom:10px;">Measure neck just below the larynx, waist at the navel, and (for the female formula) hips at the widest point.</p>
+        <button class="btn secondary block" type="button" id="navy-calc-btn">Calculate body fat %</button>
+      </div>
+
+      <label for="note">Note (optional)</label>
+      <input type="text" id="note" placeholder="e.g. morning, after workout">
+      <button class="btn block" id="log-btn">Log today's entry</button>
     </div>
 
-    <label for="note">Note (optional)</label>
-    <input type="text" id="note" placeholder="e.g. morning, after workout">
-    <button class="btn block" id="log-btn">Log today's entry</button>
+    <div class="metric-grid">
+      <div class="metric-box">
+        <div class="num" id="cur-bmi">—</div>
+        <div class="lbl" id="cur-bmi-label">BMI</div>
+      </div>
+      <div class="metric-box">
+        <div class="num" id="cur-change">—</div>
+        <div class="lbl">Change since first log</div>
+      </div>
+    </div>
+
+    <div class="shelf-label" style="margin-top:20px;">History</div>
+    <div class="row-list" id="history-list"></div>
   </div>
 
-  <div class="metric-grid">
-    <div class="metric-box">
-      <div class="num" id="cur-bmi">—</div>
-      <div class="lbl" id="cur-bmi-label">BMI</div>
+  <!-- ============ STEPS ============ -->
+  <div id="panel-steps" style="display:none;">
+    <div class="today-hero">
+      <div class="num" id="steps-today">0</div>
+      <div class="sub">steps today</div>
     </div>
-    <div class="metric-box">
-      <div class="num" id="cur-change">—</div>
-      <div class="lbl">Change since first log</div>
+    <div class="card">
+      <label for="steps-input">Log today's steps</label>
+      <input type="number" id="steps-input" inputmode="numeric" placeholder="e.g. 8500">
+      <button class="btn block" id="steps-log-btn">Save</button>
     </div>
+    <div class="shelf-label">History</div>
+    <div class="row-list" id="steps-history"></div>
   </div>
 
-  <div class="shelf-label" style="margin-top:20px;">History</div>
-  <div class="row-list" id="history-list"></div>
+  <!-- ============ WATER ============ -->
+  <div id="panel-water" style="display:none;">
+    <div class="today-hero">
+      <div class="num" id="water-today">0 oz</div>
+      <div class="sub" id="water-goal-sub">of 64 oz goal</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="water-progress" style="width:0%;"></div></div>
+
+    <div class="goal-row">
+      <span>Daily goal (oz)</span>
+      <input type="number" id="water-goal-input" inputmode="numeric" value="64">
+    </div>
+
+    <div class="quick-add-row" style="margin-top:14px;">
+      <button data-add="8">+8 oz</button>
+      <button data-add="12">+12 oz</button>
+      <button data-add="16">+16 oz</button>
+      <button data-add="24">+24 oz</button>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:18px;">
+      <input type="number" id="water-custom" inputmode="numeric" placeholder="Custom oz" style="margin-bottom:0;">
+      <button class="btn secondary" id="water-custom-btn">Add</button>
+    </div>
+
+    <div class="shelf-label">Today's log</div>
+    <div class="row-list" id="water-today-list"></div>
+    <div class="shelf-label" style="margin-top:20px;">Past days</div>
+    <div class="row-list" id="water-history"></div>
+  </div>
+
+  <!-- ============ PROTEIN ============ -->
+  <div id="panel-protein" style="display:none;">
+    <div class="today-hero">
+      <div class="num" id="protein-today">0 g</div>
+      <div class="sub" id="protein-goal-sub">of 100 g goal</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="protein-progress" style="width:0%;"></div></div>
+
+    <div class="goal-row">
+      <span>Daily goal (g)</span>
+      <input type="number" id="protein-goal-input" inputmode="numeric" value="100">
+    </div>
+
+    <div class="quick-add-row" style="margin-top:14px;">
+      <button data-add="10">+10g</button>
+      <button data-add="20">+20g</button>
+      <button data-add="30">+30g</button>
+      <button data-add="40">+40g</button>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:18px;">
+      <input type="number" id="protein-custom" inputmode="numeric" placeholder="Custom grams" style="margin-bottom:0;">
+      <button class="btn secondary" id="protein-custom-btn">Add</button>
+    </div>
+
+    <div class="shelf-label">Today's log</div>
+    <div class="row-list" id="protein-today-list"></div>
+    <div class="shelf-label" style="margin-top:20px;">Past days</div>
+    <div class="row-list" id="protein-history"></div>
+  </div>
 </main>
 
 <script src="../js/db.js"></script>
 <script src="../js/app.js"></script>
 <script>
+  // ============================================================
+  // Tabs
+  // ============================================================
+  const TABS = ['body', 'steps', 'water', 'protein'];
+  function setTab(tab) {
+    TABS.forEach((t) => {
+      document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+      document.getElementById('panel-' + t).style.display = t === tab ? '' : 'none';
+    });
+  }
+  TABS.forEach((t) => document.getElementById('tab-' + t).addEventListener('click', () => setTab(t)));
+
+  function dateKey(ts = Date.now()) {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function prettyDateKey(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // ============================================================
+  // BODY (weight / BMI / body fat) — unchanged from before
+  // ============================================================
   const weightEl = document.getElementById('weight');
   const heightEl = document.getElementById('height');
   const bodyfatEl = document.getElementById('bodyfat');
   const noteEl = document.getElementById('note');
 
-  // ---------- Navy method body fat % estimator ----------
   let navySex = 'm';
   document.getElementById('navy-toggle').addEventListener('click', () => {
     const panel = document.getElementById('navy-calc');
@@ -101,8 +229,6 @@
   });
   function setNavySex(sex) {
     navySex = sex;
-    document.getElementById('navy-sex-m').classList.toggle('secondary', sex !== 'm');
-    document.getElementById('navy-sex-f').classList.toggle('secondary', sex !== 'f');
     document.getElementById('navy-sex-m').style.background = sex === 'm' ? 'var(--primary)' : '';
     document.getElementById('navy-sex-m').style.color = sex === 'm' ? '#fff' : '';
     document.getElementById('navy-sex-f').style.background = sex === 'f' ? 'var(--primary)' : '';
@@ -118,11 +244,9 @@
     const neck = parseFloat(document.getElementById('navy-neck').value);
     const waist = parseFloat(document.getElementById('navy-waist').value);
     const hip = parseFloat(document.getElementById('navy-hip').value);
-
     if (!heightIn) { toolkitToast('Enter your height above first', { danger: true }); return; }
     if (!neck || !waist) { toolkitToast('Enter neck and waist measurements', { danger: true }); return; }
     if (navySex === 'f' && !hip) { toolkitToast('Enter your hip measurement', { danger: true }); return; }
-
     let pct;
     if (navySex === 'm') {
       if (waist <= neck) { toolkitToast('Waist should be larger than neck — check your measurements', { danger: true }); return; }
@@ -131,7 +255,6 @@
       if (waist + hip <= neck) { toolkitToast('Check your measurements — waist + hip should exceed neck', { danger: true }); return; }
       pct = 495 / (1.29579 - 0.35004 * Math.log10(waist + hip - neck) + 0.22100 * Math.log10(heightIn)) - 450;
     }
-
     if (!isFinite(pct) || pct <= 0 || pct > 70) {
       toolkitToast('Those measurements gave an unusual result — double check them', { danger: true });
       return;
@@ -144,24 +267,22 @@
     if (!weightLb || !heightIn) return null;
     return (weightLb / (heightIn * heightIn)) * 703;
   }
-
   function bmiCategory(bmi) {
-    if (bmi < 18.5) return { text: 'Underweight', cls: 'accent' };
-    if (bmi < 25) return { text: 'Healthy range', cls: 'success' };
-    if (bmi < 30) return { text: 'Overweight', cls: 'accent' };
-    return { text: 'Obesity range', cls: 'danger' };
+    if (bmi < 18.5) return { text: 'Underweight' };
+    if (bmi < 25) return { text: 'Healthy range' };
+    if (bmi < 30) return { text: 'Overweight' };
+    return { text: 'Obesity range' };
   }
 
-  async function loadEntries() {
+  async function loadBodyEntries() {
     const all = await dbGetAll('health');
     return all.sort((a, b) => b.date - a.date);
   }
 
-  async function refresh() {
-    const entries = await loadEntries();
+  async function refreshBody() {
+    const entries = await loadBodyEntries();
     const listEl = document.getElementById('history-list');
     listEl.innerHTML = '';
-
     if (entries.length === 0) {
       listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⚖️</div><p>No entries yet.</p><p>Log your first weigh-in above.</p></div>`;
       document.getElementById('cur-bmi').textContent = '—';
@@ -169,7 +290,6 @@
       document.getElementById('cur-change').textContent = '—';
       return;
     }
-
     const latest = entries[0];
     const first = entries[entries.length - 1];
     const bmi = computeBmi(latest.weightLb, latest.heightIn);
@@ -178,8 +298,7 @@
       document.getElementById('cur-bmi-label').textContent = bmiCategory(bmi).text;
     }
     const change = latest.weightLb - first.weightLb;
-    const changeEl = document.getElementById('cur-change');
-    changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(1) + ' lb';
+    document.getElementById('cur-change').textContent = (change >= 0 ? '+' : '') + change.toFixed(1) + ' lb';
 
     entries.forEach((entry) => {
       const entryBmi = computeBmi(entry.weightLb, entry.heightIn);
@@ -195,7 +314,7 @@
       row.querySelector('button').addEventListener('click', async () => {
         await dbDelete('health', entry.id);
         toolkitToast('Entry removed');
-        refresh();
+        refreshBody();
       });
       listEl.appendChild(row);
     });
@@ -205,22 +324,168 @@
     const weightLb = parseFloat(weightEl.value);
     const heightIn = parseFloat(heightEl.value) || null;
     const bodyFatPct = parseFloat(bodyfatEl.value) || null;
-    if (!weightLb) {
-      toolkitToast('Enter a weight to log', { danger: true });
-      return;
-    }
-    await dbPut('health', {
-      id: toolkitId(),
-      date: Date.now(),
-      weightLb, heightIn, bodyFatPct,
-      note: noteEl.value.trim(),
-    });
+    if (!weightLb) { toolkitToast('Enter a weight to log', { danger: true }); return; }
+    await dbPut('health', { id: toolkitId(), date: Date.now(), weightLb, heightIn, bodyFatPct, note: noteEl.value.trim() });
     noteEl.value = '';
     toolkitToast('Entry logged');
-    refresh();
+    refreshBody();
   });
 
-  refresh();
+  // ============================================================
+  // STEPS — one entry per day, logging again overwrites it
+  // ============================================================
+  async function refreshSteps() {
+    const all = (await dbGetAll('steps')).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+    const today = dateKey();
+    const todayEntry = all.find((e) => e.dateKey === today);
+    document.getElementById('steps-today').textContent = (todayEntry ? todayEntry.steps : 0).toLocaleString();
+    document.getElementById('steps-input').value = todayEntry ? todayEntry.steps : '';
+
+    const listEl = document.getElementById('steps-history');
+    listEl.innerHTML = '';
+    const past = all.filter((e) => e.dateKey !== today);
+    if (past.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><p>No earlier days logged yet.</p></div>`;
+      return;
+    }
+    past.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = 'row-item';
+      row.innerHTML = `
+        <div class="row-main">
+          <div class="row-title">${entry.steps.toLocaleString()} steps</div>
+          <div class="row-sub">${prettyDateKey(entry.dateKey)}</div>
+        </div>
+        <button class="icon-btn danger" aria-label="Delete entry">✕</button>
+      `;
+      row.querySelector('button').addEventListener('click', async () => {
+        await dbDelete('steps', entry.id);
+        toolkitToast('Entry removed');
+        refreshSteps();
+      });
+      listEl.appendChild(row);
+    });
+  }
+
+  document.getElementById('steps-log-btn').addEventListener('click', async () => {
+    const steps = parseInt(document.getElementById('steps-input').value, 10);
+    if (!steps && steps !== 0) { toolkitToast('Enter a step count', { danger: true }); return; }
+    const key = dateKey();
+    await dbPut('steps', { id: 'steps-' + key, dateKey: key, steps });
+    toolkitToast('Steps logged');
+    refreshSteps();
+  });
+
+  // ============================================================
+  // WATER & PROTEIN — shared logic, multiple entries per day summed
+  // ============================================================
+  async function getGoal(settingId, fallback) {
+    try {
+      const rec = await dbGet('settings', settingId);
+      return rec ? rec.value : fallback;
+    } catch (e) { return fallback; }
+  }
+  async function setGoal(settingId, value) {
+    await dbPut('settings', { id: settingId, value });
+  }
+
+  function makeIntakeTracker(store, unit, elPrefix, goalSettingId, defaultGoal) {
+    async function refresh() {
+      const all = (await dbGetAll(store)).sort((a, b) => b.ts - a.ts);
+      const today = dateKey();
+      const todayEntries = all.filter((e) => e.dateKey === today);
+      const todayTotal = todayEntries.reduce((sum, e) => sum + e.amount, 0);
+      const goal = await getGoal(goalSettingId, defaultGoal);
+
+      document.getElementById(elPrefix + '-today').textContent = `${todayTotal.toLocaleString()} ${unit}`;
+      document.getElementById(elPrefix + '-goal-sub').textContent = `of ${goal} ${unit} goal`;
+      document.getElementById(elPrefix + '-progress').style.width = Math.min(100, (todayTotal / goal) * 100) + '%';
+      document.getElementById(elPrefix + '-goal-input').value = goal;
+
+      const todayListEl = document.getElementById(elPrefix + '-today-list');
+      todayListEl.innerHTML = '';
+      if (todayEntries.length === 0) {
+        todayListEl.innerHTML = `<div class="empty-state"><p>Nothing logged yet today.</p></div>`;
+      } else {
+        todayEntries.forEach((entry) => {
+          const row = document.createElement('div');
+          row.className = 'row-item';
+          row.innerHTML = `
+            <div class="row-main">
+              <div class="row-title">+${entry.amount} ${unit}</div>
+              <div class="row-sub">${new Date(entry.ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
+            </div>
+            <button class="icon-btn danger" aria-label="Delete entry">✕</button>
+          `;
+          row.querySelector('button').addEventListener('click', async () => {
+            await dbDelete(store, entry.id);
+            toolkitToast('Entry removed');
+            refresh();
+          });
+          todayListEl.appendChild(row);
+        });
+      }
+
+      const byDay = {};
+      all.forEach((e) => {
+        if (e.dateKey === today) return;
+        byDay[e.dateKey] = (byDay[e.dateKey] || 0) + e.amount;
+      });
+      const pastDays = Object.keys(byDay).sort().reverse();
+      const historyEl = document.getElementById(elPrefix + '-history');
+      historyEl.innerHTML = '';
+      if (pastDays.length === 0) {
+        historyEl.innerHTML = `<div class="empty-state"><p>No earlier days logged yet.</p></div>`;
+      } else {
+        pastDays.forEach((key) => {
+          const row = document.createElement('div');
+          row.className = 'row-item';
+          row.innerHTML = `
+            <div class="row-main">
+              <div class="row-title">${byDay[key].toLocaleString()} ${unit}</div>
+              <div class="row-sub">${prettyDateKey(key)}</div>
+            </div>
+          `;
+          historyEl.appendChild(row);
+        });
+      }
+    }
+
+    async function addAmount(amount) {
+      if (!amount || amount <= 0) { toolkitToast('Enter an amount first', { danger: true }); return; }
+      await dbPut(store, { id: toolkitId(), ts: Date.now(), dateKey: dateKey(), amount });
+      toolkitToast(`Added ${amount} ${unit}`);
+      refresh();
+    }
+
+    document.querySelectorAll(`#panel-${elPrefix} .quick-add-row button`).forEach((btn) => {
+      btn.addEventListener('click', () => addAmount(parseFloat(btn.dataset.add)));
+    });
+    document.getElementById(elPrefix + '-custom-btn').addEventListener('click', () => {
+      const input = document.getElementById(elPrefix + '-custom');
+      const val = parseFloat(input.value);
+      addAmount(val);
+      input.value = '';
+    });
+    document.getElementById(elPrefix + '-goal-input').addEventListener('change', async (e) => {
+      const val = parseFloat(e.target.value) || defaultGoal;
+      await setGoal(goalSettingId, val);
+      refresh();
+    });
+
+    return { refresh };
+  }
+
+  const waterTracker = makeIntakeTracker('water', 'oz', 'water', 'water_goal_oz', 64);
+  const proteinTracker = makeIntakeTracker('protein', 'g', 'protein', 'protein_goal_g', 100);
+
+  // ============================================================
+  // Init
+  // ============================================================
+  refreshBody();
+  refreshSteps();
+  waterTracker.refresh();
+  proteinTracker.refresh();
 </script>
 </body>
 </html>

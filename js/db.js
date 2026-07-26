@@ -4,7 +4,7 @@
    ============================================================ */
 
 const TOOLKIT_DB_NAME = 'personal-toolkit-db';
-const TOOLKIT_DB_VERSION = 1;
+const TOOLKIT_DB_VERSION = 2;
 
 const TOOLKIT_STORES = [
   'pantry',      // { id, name, brand, barcode, qty, category, lowStock, addedAt, imageDataUrl }
@@ -13,6 +13,11 @@ const TOOLKIT_STORES = [
   'health',      // { id, date, weightLb, heightIn, bodyFatPct, note }
   'vault_meta',  // { id: 'meta', salt, verifier, iv }  (single row, for secure vault unlock)
   'vault_items', // { id, kind: 'login'|'card', cipherText, iv, createdAt, updatedAt }
+  'steps',       // { id: 'steps-YYYY-MM-DD', dateKey, steps }
+  'water',       // { id, ts, dateKey, amountOz }
+  'protein',     // { id, ts, dateKey, grams }
+  'settings',    // { id, value }  (generic key/value: goals, spinner custom list, etc.)
+  'spinner_history', // { id, ts, winner }
 ];
 
 function toolkitOpenDB() {

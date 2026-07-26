@@ -69,6 +69,22 @@ work — unlike the rest of the app, which works fully offline once loaded.
    (iOS Safari) or the install prompt (Android Chrome) to get the app-icon,
    full-screen experience.
 
+## Health Tracker
+
+Four tabs, one page: **Body** (weight, BMI, body fat % including the Navy
+method estimator), **Steps** (one log per day), **Water**, and **Protein**
+(quick-add buttons plus custom amounts, with a daily goal and progress bar
+for the last two). All local, same as everything else — nothing leaves the
+device, and there's no employer or account tied to any of it.
+
+## Meal Picker
+
+A spinning wheel pre-populated with ~45 national chain restaurants across
+seven categories (fast food, pizza, Mexican, sandwiches, sit-down/casual,
+breakfast & coffee, Asian) — toggle categories on/off, add your own local
+favorites (saved permanently), then spin. Recent picks are kept so the same
+place can't quietly "win" three nights in a row without anyone noticing.
+
 ## Open Food Facts integration
 
 The Pantry Scanner pulls from [Open Food Facts](https://world.openfoodfacts.org),

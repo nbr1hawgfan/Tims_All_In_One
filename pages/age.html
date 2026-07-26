@@ -18,6 +18,16 @@
   .stat-box { background: var(--primary-wash); border-radius: var(--radius-md); padding: 14px; text-align:center; }
   .stat-box .num { font-family: var(--font-mono); font-size: 1.3rem; font-weight: 600; color: var(--primary-dark); }
   .stat-box .lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .sex-toggle { display: flex; gap: 8px; margin-bottom: 4px; }
+  .sex-toggle button {
+    flex: 1; padding: 8px 0; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-muted);
+  }
+  .sex-toggle button.active { background: var(--primary-wash); color: var(--primary-dark); border-color: var(--primary-light); }
+  .fact-item { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.86rem; }
+  .fact-item:last-child { border-bottom: none; }
+  .fact-item .fact-year { font-family: var(--font-mono); font-weight: 700; color: var(--primary-dark); margin-right: 6px; }
+  .fact-item.birth-year { background: var(--accent-wash); border-radius: var(--radius-sm); padding: 10px 12px; border-bottom: none; margin-bottom: 6px; }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -31,6 +41,12 @@
   <div class="card">
     <label for="birth-date">Birth date</label>
     <input type="date" id="birth-date">
+    <label>Sex (only used for the life expectancy estimate)</label>
+    <div class="sex-toggle">
+      <button type="button" id="sex-unspecified" class="active">Prefer not to say</button>
+      <button type="button" id="sex-male">Male</button>
+      <button type="button" id="sex-female">Female</button>
+    </div>
   </div>
 
   <div id="results" style="display:none;">
@@ -57,6 +73,19 @@
         <div class="lbl">Days to next birthday</div>
       </div>
     </div>
+
+    <div class="result-panel" style="text-align:center;">
+      <div class="label">Estimated remaining years</div>
+      <div class="big-number" id="out-life-remaining">—</div>
+      <div class="helper-text" id="out-life-detail" style="margin:6px 0 0;"></div>
+    </div>
+    <p class="helper-text" style="text-align:center; margin-top:-10px;">Based on published U.S. Social Security actuarial data — a population average, not a prediction about any one person.</p>
+
+    <div class="shelf-label" style="margin-top:22px;">On this day in history</div>
+    <div class="card" id="facts-card">
+      <p class="helper-text" id="facts-status" style="margin:0;">Loading…</p>
+      <div id="facts-list"></div>
+    </div>
   </div>
 
   <div class="empty-state" id="empty-state">
@@ -69,6 +98,51 @@
 <script>
   const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const birthInput = document.getElementById('birth-date');
+
+  // ---------- Sex toggle (affects only the life expectancy estimate) ----------
+  let sexChoice = 'blend';
+  function setSex(choice) {
+    sexChoice = choice;
+    ['unspecified', 'male', 'female'].forEach((s) => {
+      document.getElementById('sex-' + s).classList.toggle('active', (s === 'unspecified' && choice === 'blend') || s === choice);
+    });
+    recalc();
+  }
+  document.getElementById('sex-unspecified').addEventListener('click', () => setSex('blend'));
+  document.getElementById('sex-male').addEventListener('click', () => setSex('male'));
+  document.getElementById('sex-female').addEventListener('click', () => setSex('female'));
+
+  // ---------- Life expectancy (U.S. SSA-based period life table, 2025) ----------
+  // Remaining years at given ages — sourced from published SSA/state actuarial tables.
+  const LIFE_TABLE = [
+    { age: 0,  m: 74.74, f: 80.18 },
+    { age: 10, m: 65.33, f: 70.72 },
+    { age: 20, m: 55.63, f: 60.87 },
+    { age: 30, m: 46.51, f: 51.25 },
+    { age: 40, m: 37.67, f: 41.86 },
+    { age: 50, m: 29.05, f: 32.73 },
+    { age: 60, m: 21.08, f: 24.12 },
+    { age: 65, m: 17.48, f: 20.12 },
+    { age: 70, m: 14.09, f: 16.27 },
+    { age: 75, m: 10.92, f: 12.68 },
+    { age: 80, m: 8.11,  f: 9.49  },
+    { age: 85, m: 5.85,  f: 6.85  },
+    { age: 90, m: 3.91,  f: 4.62  },
+    { age: 95, m: 2.63,  f: 3.10  },
+    { age: 100, m: 1.88, f: 2.14  },
+  ];
+
+  function remainingYears(ageYears, sex) {
+    const a = Math.max(0, Math.min(100, ageYears));
+    let lo = LIFE_TABLE[0], hi = LIFE_TABLE[LIFE_TABLE.length - 1];
+    for (let i = 0; i < LIFE_TABLE.length - 1; i++) {
+      if (a >= LIFE_TABLE[i].age && a <= LIFE_TABLE[i + 1].age) { lo = LIFE_TABLE[i]; hi = LIFE_TABLE[i + 1]; break; }
+    }
+    const span = hi.age - lo.age || 1;
+    const t = (a - lo.age) / span;
+    const valAt = (row) => sex === 'male' ? row.m : sex === 'female' ? row.f : (row.m + row.f) / 2;
+    return valAt(lo) + (valAt(hi) - valAt(lo)) * t;
+  }
 
   function parseLocalDate(str) {
     const [y, m, d] = str.split('-').map(Number);
@@ -119,8 +193,56 @@
     const daysToNext = Math.round((nextBday - today) / 86400000);
     document.getElementById('out-next-bday').textContent = daysToNext === 0 ? '🎉 Today!' : daysToNext.toLocaleString();
 
+    const exactAge = years + months / 12;
+    const remaining = remainingYears(exactAge, sexChoice);
+    document.getElementById('out-life-remaining').textContent = `~${remaining.toFixed(1)} yrs`;
+    document.getElementById('out-life-detail').textContent = `Statistically, to around age ${Math.round(exactAge + remaining)}`;
+
     resultsEl.style.display = '';
     emptyEl.style.display = 'none';
+
+    loadHistoricalFacts(birth);
+  }
+
+  // ---------- On this day in history (Wikipedia, free & keyless) ----------
+  let lastFactsKey = null;
+  async function loadHistoricalFacts(birth) {
+    const mm = String(birth.getMonth() + 1).padStart(2, '0');
+    const dd = String(birth.getDate()).padStart(2, '0');
+    const birthYear = birth.getFullYear();
+    const key = `${mm}-${dd}-${birthYear}`;
+    if (key === lastFactsKey) return;
+    lastFactsKey = key;
+
+    const statusEl = document.getElementById('facts-status');
+    const listEl = document.getElementById('facts-list');
+    statusEl.textContent = 'Loading…';
+    statusEl.style.display = '';
+    listEl.innerHTML = '';
+
+    try {
+      const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${mm}/${dd}?origin=*`);
+      const data = await res.json();
+      const events = data.events || [];
+      if (events.length === 0) throw new Error('no events');
+
+      const birthYearEvent = events.find((e) => e.year === birthYear);
+      const others = events.filter((e) => e !== birthYearEvent)
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 4);
+
+      statusEl.style.display = 'none';
+      let html = '';
+      if (birthYearEvent) {
+        html += `<div class="fact-item birth-year"><span class="fact-year">${birthYearEvent.year}</span>— the year you were born — ${toolkitEscapeHtml(birthYearEvent.text)}</div>`;
+      }
+      others.forEach((e) => {
+        html += `<div class="fact-item"><span class="fact-year">${e.year}</span>${toolkitEscapeHtml(e.text)}</div>`;
+      });
+      listEl.innerHTML = html;
+    } catch (e) {
+      statusEl.textContent = "Couldn't load historical facts right now — needs an internet connection.";
+    }
   }
 
   birthInput.addEventListener('input', recalc);

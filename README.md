@@ -86,6 +86,23 @@ summary; **Export CSV** gives a plain spreadsheet (no photos) of the same
 data. This is a personal record-keeping tool, not a substitute for an actual
 appraisal or your insurance policy's documentation requirements.
 
+## Age Calculator extras
+
+Two additions pulled in automatically once a birth date is entered:
+
+- **On this day in history** — a few real historical events that happened on
+  that calendar date (any year), via Wikipedia's free "on this day" feed. If
+  something happened on that exact date in the birth year itself, it's
+  called out separately.
+- **Estimated remaining years** — uses actual published Social Security
+  actuarial data (period life table), interpolated for the current age.
+  There's an optional sex selector since the table differs meaningfully by
+  sex; it defaults to a blended average if skipped. This is a population
+  statistic, not a prediction about any individual — the page says so.
+
+Both need an internet connection; if either fails to load, the rest of the
+calculator still works normally.
+
 ## Quick Utilities
 
 - **Timer & Stopwatch** — countdown with a real audible alarm (three tones via

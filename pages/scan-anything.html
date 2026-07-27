@@ -149,7 +149,7 @@
   }
 
   document.getElementById('rescan-btn').addEventListener('click', startScan);
-  startScan();
+  document.addEventListener('DOMContentLoaded', startScan);
   window.addEventListener('beforeunload', stopScan);
 </script>
 </body>

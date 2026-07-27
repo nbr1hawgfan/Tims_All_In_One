@@ -86,6 +86,23 @@ summary; **Export CSV** gives a plain spreadsheet (no photos) of the same
 data. This is a personal record-keeping tool, not a substitute for an actual
 appraisal or your insurance policy's documentation requirements.
 
+## Color themes
+
+Settings → six presets (Teal, Plum, Forest, Sunset, Berry, Slate). Applies
+across the whole app instantly, stored in the browser's localStorage on that
+device — no account, nothing synced. Note: the very first paint of a page
+load may briefly flash the default teal before the saved theme applies;
+that's a small, deliberate tradeoff to keep every page independent rather
+than adding a shared loading step.
+
+## Sports Scores
+
+NFL, NBA, MLB, college football, and college basketball — today's games,
+scores, and status. Pulled from ESPN's public scoreboard endpoints, which
+are free and keyless but **unofficial and undocumented** — ESPN could change
+or remove them without notice. They've been stable in practice for years,
+but this is worth knowing going in.
+
 ## Age Calculator extras
 
 Two additions pulled in automatically once a birth date is entered:
@@ -101,7 +118,9 @@ Two additions pulled in automatically once a birth date is entered:
   statistic, not a prediction about any individual — the page says so.
 
 Both need an internet connection; if either fails to load, the rest of the
-calculator still works normally.
+calculator still works normally. There's also a live clock and an
+optional one-tap local weather lookup (Open-Meteo, same free service used
+for Sun & Moon) right alongside the history facts.
 
 ## Quick Utilities
 

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sports Scores — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .league-tabs { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 2px; }
+  .league-tabs button {
+    flex: 1; min-width: 66px; padding: 9px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; cursor: pointer; white-space: nowrap;
+  }
+  .league-tabs button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .game-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px; }
+  .game-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+  .game-row img { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+  .game-row .team-name { flex: 1; font-weight: 600; font-size: 0.92rem; }
+  .game-row .team-score { font-family: var(--font-mono); font-weight: 700; font-size: 1.05rem; color: var(--text-muted); }
+  .game-row.winner .team-name, .game-row.winner .team-score { color: var(--primary-dark); }
+  .game-status { text-align: center; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .game-status.live { color: var(--danger); font-weight: 700; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Sports Scores</h1></div>
+</header>
+
+<main class="shell">
+  <div class="league-tabs" id="league-tabs">
+    <button data-league="nfl" class="active">NFL</button>
+    <button data-league="nba">NBA</button>
+    <button data-league="mlb">MLB</button>
+    <button data-league="ncaaf">CFB</button>
+    <button data-league="ncaab">CBB</button>
+  </div>
+
+  <div id="games-list"></div>
+
+  <p class="helper-text" style="text-align:center; margin-top:16px;">
+    Scores come from ESPN's public scoreboard — unofficial, but reliable in practice. Games only appear during that league's season.
+  </p>
+</main>
+
+<script src="../js/app.js"></script>
+<script>
+  const LEAGUE_ENDPOINTS = {
+    nfl: 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',
+    nba: 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard',
+    mlb: 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
+    ncaaf: 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard',
+    ncaab: 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard',
+  };
+
+  let currentLeague = 'nfl';
+  document.querySelectorAll('#league-tabs button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#league-tabs button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentLeague = btn.dataset.league;
+      loadScores();
+    });
+  });
+
+  async function loadScores() {
+    const listEl = document.getElementById('games-list');
+    listEl.innerHTML = `<div class="empty-state"><p>Loading scores…</p></div>`;
+    try {
+      const res = await fetch(LEAGUE_ENDPOINTS[currentLeague]);
+      const data = await res.json();
+      const events = data.events || [];
+      if (events.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🏟️</div><p>No games today.</p><p>Probably off-season, or nothing scheduled.</p></div>`;
+        return;
+      }
+      listEl.innerHTML = '';
+      events.forEach((event) => {
+        const comp = event.competitions && event.competitions[0];
+        if (!comp) return;
+        const competitors = comp.competitors || [];
+        const home = competitors.find((c) => c.homeAway === 'home');
+        const away = competitors.find((c) => c.homeAway === 'away');
+        if (!home || !away) return;
+
+        const status = comp.status || event.status;
+        const state = status.type.state; // 'pre' | 'in' | 'post'
+        const homeWon = state === 'post' && parseInt(home.score, 10) > parseInt(away.score, 10);
+        const awayWon = state === 'post' && parseInt(away.score, 10) > parseInt(home.score, 10);
+
+        const card = document.createElement('div');
+        card.className = 'game-card';
+        card.innerHTML = `
+          <div class="game-row ${awayWon ? 'winner' : ''}">
+            ${away.team.logo ? `<img src="${away.team.logo}" alt="">` : ''}
+            <div class="team-name">${toolkitEscapeHtml(away.team.shortDisplayName || away.team.displayName)}</div>
+            <div class="team-score">${state === 'pre' ? '' : away.score}</div>
+          </div>
+          <div class="game-row ${homeWon ? 'winner' : ''}">
+            ${home.team.logo ? `<img src="${home.team.logo}" alt="">` : ''}
+            <div class="team-name">${toolkitEscapeHtml(home.team.shortDisplayName || home.team.displayName)}</div>
+            <div class="team-score">${state === 'pre' ? '' : home.score}</div>
+          </div>
+          <div class="game-status ${state === 'in' ? 'live' : ''}">${toolkitEscapeHtml(status.type.shortDetail || status.type.detail || '')}</div>
+        `;
+        listEl.appendChild(card);
+      });
+    } catch (e) {
+      listEl.innerHTML = `<div class="empty-state"><p>Could not load scores — check your connection.</p></div>`;
+    }
+  }
+
+  loadScores();
+</script>
+</body>
+</html>

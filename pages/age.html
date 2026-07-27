@@ -42,6 +42,19 @@
 </header>
 
 <main class="shell">
+  <div class="shelf-label">Right now</div>
+  <div class="now-grid">
+    <div class="now-box">
+      <div class="num" id="live-clock">—</div>
+      <div class="lbl">Current time</div>
+    </div>
+    <div class="now-box">
+      <div class="num" id="live-weather">—</div>
+      <div class="lbl" id="live-weather-lbl">Weather</div>
+    </div>
+  </div>
+  <button class="btn secondary block" id="weather-btn" style="margin-bottom:20px;">📍 Show local weather</button>
+
   <div class="card">
     <label for="birth-date">Birth date</label>
     <input type="date" id="birth-date">
@@ -84,19 +97,6 @@
       <div class="helper-text" id="out-life-detail" style="margin:6px 0 0;"></div>
     </div>
     <p class="helper-text" style="text-align:center; margin-top:-10px;">Based on published U.S. Social Security actuarial data — a population average, not a prediction about any one person.</p>
-
-    <div class="shelf-label" style="margin-top:22px;">Right now</div>
-    <div class="now-grid">
-      <div class="now-box">
-        <div class="num" id="live-clock">—</div>
-        <div class="lbl">Current time</div>
-      </div>
-      <div class="now-box">
-        <div class="num" id="live-weather">—</div>
-        <div class="lbl" id="live-weather-lbl">Weather</div>
-      </div>
-    </div>
-    <button class="btn secondary block" id="weather-btn" style="margin-bottom:20px;">📍 Show local weather</button>
 
     <div class="shelf-label" style="margin-top:22px;">On this day in history</div>
     <div class="card" id="facts-card">

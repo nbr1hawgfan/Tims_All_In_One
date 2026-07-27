@@ -32,6 +32,23 @@
   }
   .fun-title { text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: var(--primary-dark); margin-bottom: 4px; }
   .fun-sub { text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px; }
+  .toggle-row-fun { display: flex; gap: 8px; margin-bottom: 14px; }
+  .toggle-row-fun button {
+    flex: 1; padding: 9px 0; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-weight: 700; font-size: 0.85rem; cursor: pointer; color: var(--text-muted);
+  }
+  .toggle-row-fun button.active { background: var(--primary-wash); color: var(--primary-dark); border-color: var(--primary-light); }
+  .cat-img.rainbow-mode { animation: hueSpin 3s linear infinite; }
+  @keyframes hueSpin { 0% { filter: hue-rotate(0deg) saturate(1.4); } 100% { filter: hue-rotate(360deg) saturate(1.4); } }
+  .pun-card {
+    background: var(--surface); border: 2px dashed var(--primary-light); border-radius: var(--radius-lg);
+    padding: 18px; text-align: center; margin-bottom: 16px; font-size: 1.05rem; font-weight: 600; color: var(--primary-dark);
+  }
+  #confetti-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 999; }
+  .confetti-piece { position: absolute; top: -20px; border-radius: 2px; animation: confettiFall linear forwards; }
+  @keyframes confettiFall {
+    to { transform: translateY(110vh) rotate(540deg); opacity: 0.9; }
+  }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -44,29 +61,61 @@
 <main class="shell">
   <div class="rainbow-bar"></div>
   <div class="fun-title">Just for fun</div>
-  <div class="fun-sub">A random cat, and a random fact, any time you want one.</div>
+  <div class="fun-sub">Cats, facts, puns, and a little chaos.</div>
+
+  <div class="toggle-row-fun">
+    <button id="mode-photo" class="active">📷 Photo</button>
+    <button id="mode-gif">🎞️ GIF</button>
+    <button id="mode-rainbow">🌈 Rainbow mode</button>
+  </div>
 
   <div class="cat-frame" id="cat-frame">
     <p class="helper-text" id="cat-loading" style="margin:0;">Fetching a cat…</p>
-    <img id="cat-img" style="display:none;" alt="A random cat">
+    <img class="cat-img" id="cat-img" style="display:none;" alt="A random cat">
   </div>
   <button class="btn block" id="new-cat-btn" style="margin-bottom:20px;">🐾 New cat</button>
 
   <div class="fact-card">
     <div id="cat-fact">Loading a cat fact…</div>
   </div>
-  <button class="btn secondary block" id="new-fact-btn">✨ New fact</button>
+  <button class="btn secondary block" id="new-fact-btn" style="margin-bottom:20px;">✨ New fact</button>
+
+  <div class="pun-card" id="cat-pun">Why was the cat sitting on the computer? To keep an eye on the mouse.</div>
+  <button class="btn secondary block" id="new-pun-btn" style="margin-bottom:20px;">😹 New pun</button>
+
+  <button class="btn block" id="confetti-btn">🎉 Rainbow confetti!</button>
 </main>
+
+<div id="confetti-layer"></div>
 
 <script src="../js/app.js"></script>
 <script>
+  let catMode = 'photo'; // 'photo' | 'gif'
+  let rainbowMode = false;
+
+  document.getElementById('mode-photo').addEventListener('click', () => setCatMode('photo'));
+  document.getElementById('mode-gif').addEventListener('click', () => setCatMode('gif'));
+  document.getElementById('mode-rainbow').addEventListener('click', () => {
+    rainbowMode = !rainbowMode;
+    document.getElementById('mode-rainbow').classList.toggle('active', rainbowMode);
+    document.getElementById('cat-img').classList.toggle('rainbow-mode', rainbowMode);
+  });
+
+  function setCatMode(mode) {
+    catMode = mode;
+    document.getElementById('mode-photo').classList.toggle('active', mode === 'photo');
+    document.getElementById('mode-gif').classList.toggle('active', mode === 'gif');
+    loadCat();
+  }
+
   async function loadCat() {
     const img = document.getElementById('cat-img');
     const loading = document.getElementById('cat-loading');
     img.style.display = 'none';
     loading.style.display = '';
     loading.textContent = 'Fetching a cat…';
-    const url = `https://cataas.com/cat?width=500&_=${Date.now()}`;
+    const path = catMode === 'gif' ? 'cat/gif' : 'cat';
+    const url = `https://cataas.com/${path}?width=500&_=${Date.now()}`;
     img.onload = () => { loading.style.display = 'none'; img.style.display = 'block'; };
     img.onerror = () => { loading.textContent = "Couldn't fetch a cat right now — check your connection."; };
     img.src = url;
@@ -84,8 +133,60 @@
     }
   }
 
+  // ---------- Cat puns (no API — always works, even offline) ----------
+  const CAT_PUNS = [
+    "Why was the cat sitting on the computer? To keep an eye on the mouse.",
+    "I'm not kitten around — cats are the purr-fect pet.",
+    "What do you call a pile of kittens? A meowntain.",
+    "That joke was so bad, it deserves a cat-astrophe award.",
+    "My cat's favorite subject in school? Hiss-tory.",
+    "What's a cat's favorite color? Purr-ple.",
+    "Cats who work in retail always give purr-fect customer service.",
+    "I asked my cat for advice. All I got was a blank stare — very cat-egorical.",
+    "What do you call a cat that loves to bowl? An alley cat.",
+    "My cat started a bakery. Business is impurrsonating a real bakery, but the puns are great.",
+    "Why don't cats play poker in the jungle? Too many cheetahs.",
+    "That cat isn't lazy, it's just paws-ing for a moment.",
+    "What do you call a cat that's a wizard? A sorcerer's paw-prentice.",
+    "This is a paw-some pun, if I do say so myself.",
+    "My cat's favorite Beatles song? Let it Meow.",
+    "Cats make terrible storytellers — they only have one tail.",
+    "What's a cat's favorite movie? The Great Catsby.",
+    "I told my cat a joke about dogs. It didn't find it a-mew-sing.",
+  ];
+  function loadPun() {
+    const el = document.getElementById('cat-pun');
+    let next;
+    do { next = CAT_PUNS[Math.floor(Math.random() * CAT_PUNS.length)]; } while (next === el.textContent && CAT_PUNS.length > 1);
+    el.textContent = next;
+  }
+
+  // ---------- Confetti burst (pure CSS/JS, no API) ----------
+  function burstConfetti() {
+    const colors = ['#ff4d4d', '#ff9f4d', '#ffe14d', '#6ee06e', '#4dd6ff', '#6e7bff', '#c76eff'];
+    const layer = document.getElementById('confetti-layer');
+    const count = 60;
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const size = 6 + Math.random() * 6;
+      piece.style.width = size + 'px';
+      piece.style.height = (size * 0.4) + 'px';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      const duration = 2.2 + Math.random() * 1.6;
+      piece.style.animationDuration = duration + 's';
+      piece.style.animationDelay = (Math.random() * 0.4) + 's';
+      layer.appendChild(piece);
+      setTimeout(() => piece.remove(), (duration + 0.5) * 1000);
+    }
+    try { navigator.vibrate && navigator.vibrate([30, 30, 30]); } catch (e) {}
+  }
+
   document.getElementById('new-cat-btn').addEventListener('click', loadCat);
   document.getElementById('new-fact-btn').addEventListener('click', loadFact);
+  document.getElementById('new-pun-btn').addEventListener('click', loadPun);
+  document.getElementById('confetti-btn').addEventListener('click', burstConfetti);
 
   loadCat();
   loadFact();

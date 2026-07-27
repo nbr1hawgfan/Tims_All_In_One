@@ -28,10 +28,6 @@
   .fact-item:last-child { border-bottom: none; }
   .fact-item .fact-year { font-family: var(--font-mono); font-weight: 700; color: var(--primary-dark); margin-right: 6px; }
   .fact-item.birth-year { background: var(--accent-wash); border-radius: var(--radius-sm); padding: 10px 12px; border-bottom: none; margin-bottom: 6px; }
-  .now-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
-  .now-box { background: var(--primary-wash); border-radius: var(--radius-md); padding: 14px; text-align: center; }
-  .now-box .num { font-family: var(--font-mono); font-size: 1.3rem; font-weight: 600; color: var(--primary-dark); }
-  .now-box .lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -42,19 +38,6 @@
 </header>
 
 <main class="shell">
-  <div class="shelf-label">Right now</div>
-  <div class="now-grid">
-    <div class="now-box">
-      <div class="num" id="live-clock">—</div>
-      <div class="lbl">Current time</div>
-    </div>
-    <div class="now-box">
-      <div class="num" id="live-weather">—</div>
-      <div class="lbl" id="live-weather-lbl">Weather</div>
-    </div>
-  </div>
-  <button class="btn secondary block" id="weather-btn" style="margin-bottom:20px;">📍 Show local weather</button>
-
   <div class="card">
     <label for="birth-date">Birth date</label>
     <input type="date" id="birth-date">
@@ -263,47 +246,6 @@
   }
 
   birthInput.addEventListener('input', recalc);
-
-  // ---------- Live clock ----------
-  function tickClock() {
-    document.getElementById('live-clock').textContent = new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  }
-  tickClock();
-  setInterval(tickClock, 1000);
-
-  // ---------- Weather (Open-Meteo, free & keyless) ----------
-  const WEATHER_CODES = {
-    0: ['Clear sky', '☀️'], 1: ['Mainly clear', '🌤️'], 2: ['Partly cloudy', '⛅'], 3: ['Overcast', '☁️'],
-    45: ['Foggy', '🌫️'], 48: ['Foggy', '🌫️'],
-    51: ['Light drizzle', '🌦️'], 53: ['Drizzle', '🌦️'], 55: ['Heavy drizzle', '🌦️'],
-    61: ['Light rain', '🌧️'], 63: ['Rain', '🌧️'], 65: ['Heavy rain', '🌧️'],
-    71: ['Light snow', '🌨️'], 73: ['Snow', '🌨️'], 75: ['Heavy snow', '❄️'],
-    80: ['Rain showers', '🌦️'], 81: ['Rain showers', '🌦️'], 82: ['Violent showers', '⛈️'],
-    95: ['Thunderstorm', '⛈️'], 96: ['Thunderstorm w/ hail', '⛈️'], 99: ['Thunderstorm w/ hail', '⛈️'],
-  };
-
-  document.getElementById('weather-btn').addEventListener('click', () => {
-    if (!navigator.geolocation) { toolkitToast("Location isn't available on this device", { danger: true }); return; }
-    document.getElementById('live-weather').textContent = '…';
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude, longitude } = pos.coords;
-          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`);
-          const data = await res.json();
-          const temp = Math.round(data.current.temperature_2m);
-          const code = data.current.weather_code;
-          const [desc, emoji] = WEATHER_CODES[code] || ['—', '🌡️'];
-          document.getElementById('live-weather').textContent = `${emoji} ${temp}°F`;
-          document.getElementById('live-weather-lbl').textContent = desc;
-        } catch (e) {
-          document.getElementById('live-weather').textContent = '—';
-          toolkitToast('Could not load weather', { danger: true });
-        }
-      },
-      () => { toolkitToast('Location access was blocked', { danger: true }); document.getElementById('live-weather').textContent = '—'; }
-    );
-  });
 </script>
 </body>
 </html>

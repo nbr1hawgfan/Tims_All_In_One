@@ -12,6 +12,16 @@ const TOOLKIT_THEMES = {
   sunset: { name: 'Sunset', swatch: '#c15a2e', '--primary': '#c15a2e', '--primary-dark': '#8f3f1e', '--primary-light': '#e07b45', '--primary-wash': '#fbe9e0', '--accent': '#3a7ca5', '--accent-wash': '#e3eef5' },
   berry:  { name: 'Berry',  swatch: '#a13058', '--primary': '#a13058', '--primary-dark': '#74213f', '--primary-light': '#c94d76', '--primary-wash': '#f9e5ec', '--accent': '#d9a441', '--accent-wash': '#fbf1dd' },
   slate:  { name: 'Slate',  swatch: '#34495e', '--primary': '#34495e', '--primary-dark': '#22303d', '--primary-light': '#5c7a91', '--primary-wash': '#e8edf1', '--accent': '#d9a441', '--accent-wash': '#fbf1dd' },
+  rainbow: {
+    name: 'Rainbow',
+    swatch: 'linear-gradient(90deg,#ff4d4d,#ff9f4d,#ffe14d,#6ee06e,#4dd6ff,#6e7bff,#c76eff)',
+    '--primary': 'linear-gradient(90deg,#ff4d4d,#ff9f4d,#ffe14d,#6ee06e,#4dd6ff,#6e7bff,#c76eff)',
+    '--primary-dark': 'linear-gradient(90deg,#e6394f,#f4813f,#e0bd2f,#4fae65,#3fa9e6,#5c62d6,#a94fe0)',
+    '--primary-light': '#8a5cc4',
+    '--primary-wash': '#f5eefc',
+    '--accent': '#ff6fae',
+    '--accent-wash': '#fff0f6',
+  },
 };
 const TOOLKIT_THEME_KEY = 'personal-toolkit-theme';
 
@@ -26,7 +36,7 @@ function toolkitApplyTheme(themeId) {
     if (key.startsWith('--')) root.style.setProperty(key, theme[key]);
   });
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme['--primary']);
+  if (meta && !String(theme['--primary']).includes('gradient')) meta.setAttribute('content', theme['--primary']);
 }
 
 function toolkitSetTheme(themeId) {

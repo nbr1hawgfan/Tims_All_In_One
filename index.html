@@ -11,6 +11,14 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/style.css">
+<style>
+  .now-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  .now-card .now-item { flex: 1; text-align: center; }
+  .now-card .now-num { font-family: var(--font-mono); font-size: 1.4rem; font-weight: 700; color: var(--primary-dark); }
+  .now-card .now-lbl { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .now-card .now-divider { width: 1px; align-self: stretch; background: var(--border); }
+  .now-card .now-weather-btn { flex-shrink: 0; }
+</style>
 </head>
 <body data-sw-path="./sw.js">
 
@@ -22,6 +30,19 @@
 </header>
 
 <main class="shell">
+
+  <div class="card now-card">
+    <div class="now-item">
+      <div class="now-num" id="live-clock">—</div>
+      <div class="now-lbl">Time</div>
+    </div>
+    <div class="now-divider"></div>
+    <div class="now-item">
+      <div class="now-num" id="live-weather">—</div>
+      <div class="now-lbl" id="live-weather-lbl">Weather</div>
+    </div>
+    <button class="icon-btn now-weather-btn" id="weather-btn" aria-label="Get local weather">📍</button>
+  </div>
 
   <div class="shelf">
     <div class="shelf-label">Kitchen &amp; Shopping</div>
@@ -219,5 +240,45 @@
 </main>
 
 <script src="js/app.js"></script>
+<script>
+  function tickClock() {
+    document.getElementById('live-clock').textContent = new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  const WEATHER_CODES = {
+    0: ['Clear', '☀️'], 1: ['Mainly clear', '🌤️'], 2: ['Partly cloudy', '⛅'], 3: ['Overcast', '☁️'],
+    45: ['Foggy', '🌫️'], 48: ['Foggy', '🌫️'],
+    51: ['Drizzle', '🌦️'], 53: ['Drizzle', '🌦️'], 55: ['Drizzle', '🌦️'],
+    61: ['Light rain', '🌧️'], 63: ['Rain', '🌧️'], 65: ['Heavy rain', '🌧️'],
+    71: ['Light snow', '🌨️'], 73: ['Snow', '🌨️'], 75: ['Heavy snow', '❄️'],
+    80: ['Showers', '🌦️'], 81: ['Showers', '🌦️'], 82: ['Violent showers', '⛈️'],
+    95: ['Thunderstorm', '⛈️'], 96: ['Thunderstorm', '⛈️'], 99: ['Thunderstorm', '⛈️'],
+  };
+
+  document.getElementById('weather-btn').addEventListener('click', () => {
+    if (!navigator.geolocation) { toolkitToast("Location isn't available on this device", { danger: true }); return; }
+    document.getElementById('live-weather').textContent = '…';
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`);
+          const data = await res.json();
+          const temp = Math.round(data.current.temperature_2m);
+          const code = data.current.weather_code;
+          const [desc, emoji] = WEATHER_CODES[code] || ['—', '🌡️'];
+          document.getElementById('live-weather').textContent = `${emoji} ${temp}°F`;
+          document.getElementById('live-weather-lbl').textContent = desc;
+        } catch (e) {
+          document.getElementById('live-weather').textContent = '—';
+          toolkitToast('Could not load weather', { danger: true });
+        }
+      },
+      () => { toolkitToast('Location access was blocked', { danger: true }); document.getElementById('live-weather').textContent = '—'; }
+    );
+  });
+</script>
 </body>
 </html>

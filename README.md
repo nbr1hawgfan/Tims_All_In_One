@@ -86,6 +86,15 @@ summary; **Export CSV** gives a plain spreadsheet (no photos) of the same
 data. This is a personal record-keeping tool, not a substitute for an actual
 appraisal or your insurance policy's documentation requirements.
 
+- Six solid presets plus **Rainbow**, which uses a CSS gradient as the
+  brand color directly — a small trick that works because the app's buttons
+  and header already just do `background: var(--primary)`, so swapping that
+  variable to a gradient string makes them gradient automatically, no other
+  code changes needed. A couple of text/border spots that use the same
+  variable for `color` fall back to normal dark text when it's a gradient
+  (browsers ignore invalid color values) — barely noticeable, and a fair
+  trade for keeping this simple.
+
 ## Color themes
 
 Settings → six presets (Teal, Plum, Forest, Sunset, Berry, Slate). Applies
@@ -117,10 +126,12 @@ Two additions pulled in automatically once a birth date is entered:
   sex; it defaults to a blended average if skipped. This is a population
   statistic, not a prediction about any individual — the page says so.
 
-Both need an internet connection; if either fails to load, the rest of the
-calculator still works normally. There's also a live clock and an
-optional one-tap local weather lookup (Open-Meteo, same free service used
-for Sun & Moon) right alongside the history facts.
+Both the history facts and life expectancy estimate need an internet
+connection; if either fails to load, the rest of the calculator still works
+normally.
+
+There's also a live clock and one-tap local weather card right at the top
+of the home screen (above Pantry) — always visible, no birth date required.
 
 ## Quick Utilities
 

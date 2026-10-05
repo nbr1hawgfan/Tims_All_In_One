@@ -198,10 +198,50 @@ function neighbors_(type, week) {
   };
 }
 
+// ESPN serves the same feed from two hosts; if one turns Google away, try the other.
+const ESPN_HOSTS = ['https://site.api.espn.com', 'https://site.web.api.espn.com'];
+
 function fetchJson_(url) {
-  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-  if (res.getResponseCode() !== 200) throw new Error('ESPN is not responding right now — try again in a minute.');
-  return JSON.parse(res.getContentText());
+  const tries = [];
+  ESPN_HOSTS.forEach(function (host) {
+    tries.push(url.replace(/^https:\/\/site(\.web)?\.api\.espn\.com/, host));
+  });
+  let lastCode = 0, lastErr = '';
+  for (let i = 0; i < tries.length; i++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = UrlFetchApp.fetch(tries[i], {
+          muteHttpExceptions: true,
+          followRedirects: true,
+          headers: { 'Accept': 'application/json' },
+        });
+        lastCode = res.getResponseCode();
+        if (lastCode === 200) return JSON.parse(res.getContentText());
+      } catch (err) {
+        lastErr = String(err);
+      }
+      Utilities.sleep(400);
+    }
+  }
+  throw new Error('ESPN is not responding right now (status ' + (lastCode || lastErr || 'unknown') + ') — try again in a minute.');
+}
+
+/** Run from the editor if games won't load — logs exactly what ESPN sends back. */
+function diagnoseEspn() {
+  const urls = [
+    'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',
+    'https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',
+    'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard',
+  ];
+  urls.forEach(function (u) {
+    try {
+      const res = UrlFetchApp.fetch(u, { muteHttpExceptions: true, followRedirects: true });
+      const body = res.getContentText();
+      Logger.log(res.getResponseCode() + '  ' + u + '\n   ' + body.slice(0, 200).replace(/\s+/g, ' '));
+    } catch (err) {
+      Logger.log('FAILED  ' + u + '\n   ' + err);
+    }
+  });
 }
 
 function trimGame_(ev, league) {

@@ -87,7 +87,16 @@
       document.getElementById('page-title').textContent = team.shortDisplayName || team.displayName;
       renderHero();
     } catch (e) {
-      document.getElementById('hero').innerHTML = `<div class="sub">Couldn’t load this team — check your connection.</div>`;
+      // Fall back to what we know locally (followed team or built-in list)
+      const fav = sportsGetFavs().find((f) => f.league === leagueKey && String(f.id) === String(teamId));
+      const known = fav ? { id: fav.id, displayName: fav.name, abbreviation: fav.abbr, logo: fav.logo } : sportsBuiltinTeams(leagueKey).find((t) => String(t.id) === String(teamId));
+      if (known) {
+        team = known;
+        document.getElementById('page-title').textContent = known.shortDisplayName || known.abbreviation || known.displayName;
+        renderHero();
+      } else {
+        document.getElementById('hero').innerHTML = `<div class="sub">Couldn’t load this team — check your connection.</div>`;
+      }
     }
   }
 

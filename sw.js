@@ -4,7 +4,7 @@
    Bump CACHE_NAME any time files change to force a refresh.
    ============================================================ */
 
-const CACHE_NAME = 'personal-toolkit-v21';
+const CACHE_NAME = 'personal-toolkit-v22';
 
 const APP_SHELL = [
   './index.html',

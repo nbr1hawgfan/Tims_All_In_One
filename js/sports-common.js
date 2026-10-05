@@ -20,10 +20,24 @@ function sportsBase(leagueKey) {
   return `${SPORTS_API}/${L.sport}/${L.league}`;
 }
 
+// ESPN serves the same feeds from two hosts. Some feeds don't allow browser
+// requests from one of them, so if the first fails we quietly try the other.
+const SPORTS_ALT_HOST = { 'site.api.espn.com': 'site.web.api.espn.com', 'site.web.api.espn.com': 'site.api.espn.com' };
+
 async function sportsGetJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
+  const once = async (u) => {
+    const res = await fetch(u);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  };
+  try {
+    return await once(url);
+  } catch (err) {
+    const m = url.match(/^https:\/\/([^/]+)(\/.*)$/);
+    const alt = m && SPORTS_ALT_HOST[m[1]] && /\/apis\/site\/v2\//.test(m[2]) ? `https://${SPORTS_ALT_HOST[m[1]]}${m[2]}` : null;
+    if (!alt) throw err;
+    return once(alt);
+  }
 }
 
 function sportsImg(src, cls = '', alt = '') {
@@ -102,12 +116,47 @@ function sportsRenderNav(active) {
 // ---------- Favorite-teams picker (bottom sheet) ----------
 const sportsTeamListCache = {};
 
+// Built-in team lists for the pro leagues, used if ESPN's team list won't load.
+// Format: id|abbr|name  (ESPN team ids)
+const SPORTS_BUILTIN_TEAMS = {
+  nfl: '22|ARI|Arizona Cardinals,1|ATL|Atlanta Falcons,33|BAL|Baltimore Ravens,2|BUF|Buffalo Bills,29|CAR|Carolina Panthers,3|CHI|Chicago Bears,4|CIN|Cincinnati Bengals,5|CLE|Cleveland Browns,6|DAL|Dallas Cowboys,7|DEN|Denver Broncos,8|DET|Detroit Lions,9|GB|Green Bay Packers,34|HOU|Houston Texans,11|IND|Indianapolis Colts,30|JAX|Jacksonville Jaguars,12|KC|Kansas City Chiefs,13|LV|Las Vegas Raiders,24|LAC|Los Angeles Chargers,14|LAR|Los Angeles Rams,15|MIA|Miami Dolphins,16|MIN|Minnesota Vikings,17|NE|New England Patriots,18|NO|New Orleans Saints,19|NYG|New York Giants,20|NYJ|New York Jets,21|PHI|Philadelphia Eagles,23|PIT|Pittsburgh Steelers,25|SF|San Francisco 49ers,26|SEA|Seattle Seahawks,27|TB|Tampa Bay Buccaneers,10|TEN|Tennessee Titans,28|WSH|Washington Commanders',
+  nba: '1|ATL|Atlanta Hawks,2|BOS|Boston Celtics,17|BKN|Brooklyn Nets,30|CHA|Charlotte Hornets,4|CHI|Chicago Bulls,5|CLE|Cleveland Cavaliers,6|DAL|Dallas Mavericks,7|DEN|Denver Nuggets,8|DET|Detroit Pistons,9|GS|Golden State Warriors,10|HOU|Houston Rockets,11|IND|Indiana Pacers,12|LAC|LA Clippers,13|LAL|Los Angeles Lakers,29|MEM|Memphis Grizzlies,14|MIA|Miami Heat,15|MIL|Milwaukee Bucks,16|MIN|Minnesota Timberwolves,3|NO|New Orleans Pelicans,18|NY|New York Knicks,25|OKC|Oklahoma City Thunder,19|ORL|Orlando Magic,20|PHI|Philadelphia 76ers,21|PHX|Phoenix Suns,22|POR|Portland Trail Blazers,23|SAC|Sacramento Kings,24|SA|San Antonio Spurs,28|TOR|Toronto Raptors,26|UTAH|Utah Jazz,27|WSH|Washington Wizards',
+  mlb: '29|ARI|Arizona Diamondbacks,11|ATH|Athletics,15|ATL|Atlanta Braves,1|BAL|Baltimore Orioles,2|BOS|Boston Red Sox,16|CHC|Chicago Cubs,4|CHW|Chicago White Sox,17|CIN|Cincinnati Reds,5|CLE|Cleveland Guardians,27|COL|Colorado Rockies,6|DET|Detroit Tigers,18|HOU|Houston Astros,7|KC|Kansas City Royals,3|LAA|Los Angeles Angels,19|LAD|Los Angeles Dodgers,28|MIA|Miami Marlins,8|MIL|Milwaukee Brewers,9|MIN|Minnesota Twins,21|NYM|New York Mets,10|NYY|New York Yankees,22|PHI|Philadelphia Phillies,23|PIT|Pittsburgh Pirates,25|SD|San Diego Padres,26|SF|San Francisco Giants,12|SEA|Seattle Mariners,24|STL|St. Louis Cardinals,30|TB|Tampa Bay Rays,13|TEX|Texas Rangers,14|TOR|Toronto Blue Jays,20|WSH|Washington Nationals',
+};
+
+function sportsBuiltinTeams(leagueKey) {
+  const src = SPORTS_BUILTIN_TEAMS[leagueKey];
+  if (!src) return [];
+  return src.split(',').map((row) => {
+    const [id, abbr, name] = row.split('|');
+    return { id, abbreviation: abbr, displayName: name, shortDisplayName: name.split(' ').pop(), logo: `https://a.espncdn.com/i/teamlogos/${leagueKey}/500/${abbr.toLowerCase()}.png` };
+  });
+}
+
+// College fallback: every FBS / D-I team playing this week, plus the AP poll
+async function sportsCollegeTeamsFromScores(leagueKey) {
+  const byId = {};
+  const add = (t) => { if (t && t.id && !byId[t.id]) byId[t.id] = t; };
+  const [sb, rk] = await Promise.all([
+    sportsGetJson(`${sportsBase(leagueKey)}/scoreboard?groups=${leagueKey === 'ncaaf' ? 80 : 50}&limit=500`).catch(() => ({})),
+    sportsGetJson(`${sportsBase(leagueKey)}/rankings`).catch(() => ({})),
+  ]);
+  (sb.events || []).forEach((ev) => (((ev.competitions || [])[0] || {}).competitors || []).forEach((c) => add(c.team)));
+  ((rk.rankings || [])[0] || { ranks: [] }).ranks.forEach((r) => add(r.team && { ...r.team, displayName: r.team.displayName || [r.team.location, r.team.name].filter(Boolean).join(' ') }));
+  return Object.values(byId);
+}
+
 async function sportsLoadTeams(leagueKey) {
   if (sportsTeamListCache[leagueKey]) return sportsTeamListCache[leagueKey];
   const college = leagueKey === 'ncaaf' || leagueKey === 'ncaab';
-  const data = await sportsGetJson(`${sportsBase(leagueKey)}/teams?limit=${college ? 1000 : 100}`);
-  const teams = (((data.sports || [])[0] || {}).leagues || [])[0];
-  const list = ((teams && teams.teams) || []).map((t) => t.team).filter(Boolean);
+  let list = [];
+  try {
+    const data = await sportsGetJson(`${sportsBase(leagueKey)}/teams?limit=${college ? 1000 : 100}`);
+    const teams = (((data.sports || [])[0] || {}).leagues || [])[0];
+    list = ((teams && teams.teams) || []).map((t) => t.team).filter(Boolean);
+  } catch (err) { /* fall through to backups */ }
+  if (!list.length) list = college ? await sportsCollegeTeamsFromScores(leagueKey) : sportsBuiltinTeams(leagueKey);
+  if (!list.length) throw new Error('no teams');
   list.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
   sportsTeamListCache[leagueKey] = list;
   return list;

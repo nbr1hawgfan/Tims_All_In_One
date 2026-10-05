@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .seg-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
   .seg-tabs button { flex: 1; padding: 9px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
@@ -234,7 +235,7 @@
 
   async function loadWeek(showLoading) {
     const body = document.getElementById('body');
-    if (showLoading || !weekData) body.innerHTML = `<div class="empty-state"><p>Loading this week’s games…</p></div>`;
+    if (showLoading || !weekData) body.innerHTML = sportsSkeleton(4);
     try {
       const d = await api('week', viewWeek ? { weekKey: viewWeek } : {});
       if (tab !== 'week') return;

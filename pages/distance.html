@@ -10,10 +10,11 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
   .stat-box { background: var(--primary-wash); border-radius: var(--radius-md); padding: 16px; text-align:center; }
-  .stat-box .num { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; color: var(--primary-dark); }
+  .stat-box .num { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; color: var(--ink-strong); }
   .stat-box .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
 </style>
 </head>
@@ -47,7 +48,7 @@
     </div>
     <div class="card" style="text-align:center;">
       <div class="row-sub">Straight-line (as the crow flies)</div>
-      <div class="mono" style="font-size:1.05rem; font-weight:600; color:var(--primary-dark);" id="out-straight">—</div>
+      <div class="mono" style="font-size:1.05rem; font-weight:600; color: var(--ink-strong);" id="out-straight">—</div>
     </div>
     <p class="helper-text" id="matched-places" style="text-align:center;"></p>
   </div>

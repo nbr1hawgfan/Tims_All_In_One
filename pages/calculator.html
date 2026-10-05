@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .calc-card { max-width: 380px; margin: 0 auto; }
   .calc-display {
@@ -33,10 +34,12 @@
     font-weight: 600;
     color: var(--text);
     cursor: pointer;
+    transition: transform 0.08s ease, filter 0.1s ease;
   }
-  .calc-btn:hover { background: var(--surface-sunken); }
-  .calc-btn.op { background: var(--primary-wash); color: var(--primary-dark); }
-  .calc-btn.op:hover { background: #d6ebef; }
+  .calc-btn:hover { background: var(--surface-2); }
+  .calc-btn:active { transform: scale(0.95); }
+  .calc-btn.op { background: var(--primary-wash); color: var(--ink-strong); }
+  .calc-btn.op:hover { background: var(--primary-wash); filter: brightness(1.15); }
   .calc-btn.equals { background: var(--primary); color: #fff; grid-row: span 2; height: 100%; }
   .calc-btn.equals:hover { background: var(--primary-dark); }
   .calc-btn.wide { grid-column: span 2; }

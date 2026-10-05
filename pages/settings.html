@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .theme-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .theme-card {
@@ -19,8 +20,11 @@
   .theme-card.selected { border-color: var(--primary); background: var(--primary-wash); }
   .theme-swatch { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; box-shadow: var(--shadow-sm); }
   .theme-card .theme-name { font-weight: 700; font-size: 0.9rem; }
-  .theme-check { margin-left: auto; font-size: 1rem; color: var(--primary); visibility: hidden; }
+  .theme-check { margin-left: auto; font-size: 1rem; color: var(--ink-accent); visibility: hidden; }
   .theme-card.selected .theme-check { visibility: visible; }
+  .mode-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 26px; }
+  .mode-row button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px; border-radius: var(--radius-md); border: 2px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+  .mode-row button.selected { border-color: var(--primary-light); background: var(--primary-wash); }
 </style>
 </head>
 <body data-sw-path="../sw.js">
@@ -31,13 +35,33 @@
 </header>
 
 <main class="shell">
+  <div class="shelf-label">Appearance</div>
+  <div class="mode-row" id="mode-row">
+    <button data-mode="dark"><span data-icon="moon"></span>Dark</button>
+    <button data-mode="light"><span data-icon="sun"></span>Light</button>
+    <button data-mode="auto"><span data-icon="monitor-smartphone"></span>Match phone</button>
+  </div>
+
   <div class="shelf-label">Color theme</div>
   <p class="helper-text" style="margin-top:-4px;">Applies everywhere in the app, on this device only.</p>
   <div class="theme-grid" id="theme-grid"></div>
 </main>
 
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script>
+  function renderModes() {
+    const m = toolkitGetMode();
+    document.querySelectorAll('#mode-row button').forEach((b) => b.classList.toggle('selected', b.dataset.mode === m));
+  }
+  document.querySelectorAll('#mode-row button').forEach((b) => b.addEventListener('click', () => {
+    toolkitSetMode(b.dataset.mode);
+    renderModes();
+    toolkitToast(b.dataset.mode === 'auto' ? 'Following your phone’s setting' : `${b.textContent.trim()} mode on`);
+  }));
+  toolkitHydrateIcons();
+  renderModes();
+
   const gridEl = document.getElementById('theme-grid');
   let current = toolkitGetTheme();
 

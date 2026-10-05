@@ -4,296 +4,314 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/style.css">
+<script src="js/boot.js"></script>
 <style>
-  .now-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
-  .now-card .now-item { flex: 1; text-align: center; }
-  .now-card .now-num { font-family: var(--font-mono); font-size: 1.4rem; font-weight: 700; color: var(--primary-dark); }
-  .now-card .now-lbl { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .now-card .now-divider { width: 1px; align-self: stretch; background: var(--border); }
-  .now-card .now-weather-btn { flex-shrink: 0; }
+  .home { max-width: var(--max-w); margin: 0 auto; padding: calc(18px + env(safe-area-inset-top)) 16px 48px; }
+
+  /* greeting */
+  .hello { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .hello .date { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+  .hello h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.03em; margin: 2px 0 0; color: var(--text); }
+  .round-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0; transition: transform 0.12s ease; }
+  .round-btn:active { transform: scale(0.92); }
+
+  /* time + weather card */
+  .now { position: relative; overflow: hidden; border-radius: var(--radius-lg); padding: 18px 18px 16px; margin-bottom: 16px; color: #fff;
+    background: radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--primary) 65%, transparent), transparent 60%), linear-gradient(145deg, var(--primary-dark), #0d1520);
+    box-shadow: var(--shadow-md); }
+  :root[data-mode="light"] .now { background: radial-gradient(120% 140% at 100% 0%, var(--primary-light), transparent 60%), linear-gradient(145deg, var(--primary), var(--primary-dark)); }
+  .now .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  .now .clock { font-family: var(--font-display); font-size: 2.6rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+  .now .clock small { font-size: 1rem; font-weight: 700; margin-left: 4px; opacity: 0.8; letter-spacing: 0; }
+  .now .wx { text-align: right; }
+  .now .wx .temp { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-family: var(--font-display); font-size: 1.7rem; font-weight: 800; line-height: 1; }
+  .now .wx .desc { font-size: 0.78rem; opacity: 0.85; margin-top: 4px; }
+  .now .wx-btn { background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.25); color: #fff; border-radius: 999px; padding: 8px 12px; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .now .glow { position: absolute; right: -40px; bottom: -60px; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.06); pointer-events: none; }
+
+  /* search */
+  .search { position: relative; margin-bottom: 18px; }
+  .search .ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+  .search input { width: 100%; margin: 0; padding: 13px 14px 13px 42px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.95rem; }
+  .search input::placeholder { color: var(--text-muted); }
+
+  /* my teams strip */
+  .strip-head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; }
+  .sec-title { font-family: var(--font-display); font-size: 1.02rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+  .strip-head a { font-size: 0.8rem; font-weight: 700; color: var(--ink-accent); text-decoration: none; display: inline-flex; align-items: center; gap: 2px; }
+  .strip { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px 22px; padding: 0 16px 4px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .mini-game { position: relative; flex: 0 0 auto; width: 168px; scroll-snap-align: start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px 10px 14px; text-decoration: none; color: var(--text); overflow: hidden; }
+  .mini-game::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--tc, var(--primary)); }
+  .mini-game .lg { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-muted); display: flex; justify-content: space-between; }
+  .mini-game .lg .live { color: var(--danger); display: inline-flex; align-items: center; gap: 4px; }
+  .mini-game .lg .live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); animation: pulse 1.4s infinite; }
+  .mini-game .tm { display: flex; align-items: center; gap: 7px; margin-top: 6px; font-weight: 700; font-size: 0.86rem; }
+  .mini-game .tm img { width: 20px; height: 20px; object-fit: contain; }
+  .mini-game .tm .s { margin-left: auto; font-family: var(--font-mono); font-weight: 700; }
+  .mini-game .tm.lose { color: var(--text-muted); }
+  .mini-game .st { font-size: 0.68rem; color: var(--text-muted); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-empty { flex: 1; font-size: 0.84rem; color: var(--text-muted); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-md); padding: 14px; text-align: center; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* app grid */
+  .section { margin-bottom: 24px; }
+  .section .sec-title { margin: 0 2px 12px; display: block; }
+  .apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 8px; }
+  @media (min-width: 560px) { .apps { grid-template-columns: repeat(6, 1fr); } }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 7px; text-decoration: none; color: var(--text); -webkit-user-select: none; user-select: none; }
+  .app .ic { width: 58px; height: 58px; border-radius: 17px; display: flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(150deg, var(--c1), var(--c2)); box-shadow: 0 6px 16px -6px var(--c2), inset 0 1px 0 rgba(255,255,255,0.25); transition: transform 0.12s ease; }
+  .app:active .ic { transform: scale(0.9); }
+  .app .nm { font-size: 0.72rem; font-weight: 600; text-align: center; line-height: 1.2; max-width: 80px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .no-match { text-align: center; color: var(--text-muted); font-size: 0.88rem; padding: 20px 0; }
+  .foot { text-align: center; color: var(--text-muted); font-size: 0.74rem; margin-top: 10px; }
 </style>
 </head>
 <body data-sw-path="./sw.js">
 
-<header class="app-header">
-  <div>
-    <span class="eyebrow">Personal Toolkit</span>
-    <h1>Everything, on your phone</h1>
-  </div>
-</header>
-
-<main class="shell">
-
-  <div class="card now-card">
-    <div class="now-item">
-      <div class="now-num" id="live-clock">—</div>
-      <div class="now-lbl">Time</div>
+<main class="home">
+  <div class="hello">
+    <div>
+      <div class="date" id="today"></div>
+      <h1 id="greeting">Hello</h1>
     </div>
-    <div class="now-divider"></div>
-    <div class="now-item">
-      <div class="now-num" id="live-weather">—</div>
-      <div class="now-lbl" id="live-weather-lbl">Weather</div>
-    </div>
-    <button class="icon-btn now-weather-btn" id="weather-btn" aria-label="Get local weather">📍</button>
+    <a href="pages/settings.html" class="round-btn" aria-label="Settings" data-icon="settings" data-size="20"></a>
   </div>
 
-  <div class="shelf">
-    <div class="shelf-label">Kitchen &amp; Shopping</div>
-    <div class="tile-grid">
-      <a class="tile" href="pages/pantry.html">
-        <div class="icon-chip">🥫</div>
-        <div class="tile-name">Pantry Scanner</div>
-        <div class="tile-sub">Scan &amp; track stock</div>
-      </a>
-      <a class="tile" href="pages/shopping-list.html">
-        <div class="icon-chip">🛒</div>
-        <div class="tile-name">Shopping List</div>
-        <div class="tile-sub">Build from pantry</div>
-      </a>
+  <section class="now">
+    <div class="glow"></div>
+    <div class="row">
+      <div class="clock" id="live-clock">—</div>
+      <div class="wx" id="wx">
+        <button class="wx-btn" id="weather-btn"><span data-icon="map-pin" data-size="15"></span>Weather</button>
+      </div>
     </div>
+  </section>
+
+  <div class="search">
+    <span data-icon="search" data-size="18"></span>
+    <input type="search" id="tool-search" placeholder="Search tools" autocomplete="off" enterkeyhint="go">
   </div>
 
-  <div class="shelf">
-    <div class="shelf-label">Everyday Tools</div>
-    <div class="tile-grid">
-      <a class="tile" href="pages/calculator.html">
-        <div class="icon-chip">🧮</div>
-        <div class="tile-name">Calculator</div>
-      </a>
-      <a class="tile" href="pages/convert.html">
-        <div class="icon-chip">📏</div>
-        <div class="tile-name">Unit Converter</div>
-        <div class="tile-sub">Weight &amp; length</div>
-      </a>
-      <a class="tile" href="pages/tip.html">
-        <div class="icon-chip">💵</div>
-        <div class="tile-name">Tip Calculator</div>
-      </a>
-      <a class="tile" href="pages/translate.html">
-        <div class="icon-chip">🌐</div>
-        <div class="tile-name">Translator</div>
-        <div class="tile-sub">Reads aloud</div>
-      </a>
-      <a class="tile" href="pages/calendar.html">
-        <div class="icon-chip">📅</div>
-        <div class="tile-name">Perpetual Calendar</div>
-        <div class="tile-sub">Day of the week, any date</div>
-      </a>
-      <a class="tile" href="pages/age.html">
-        <div class="icon-chip">🎂</div>
-        <div class="tile-name">Age Calculator</div>
-      </a>
-      <a class="tile" href="pages/currency.html">
-        <div class="icon-chip">💱</div>
-        <div class="tile-name">Currency Converter</div>
-        <div class="tile-sub">Live rates</div>
-      </a>
-      <a class="tile" href="pages/sky.html">
-        <div class="icon-chip">🌙</div>
-        <div class="tile-name">Sun &amp; Moon</div>
-        <div class="tile-sub">Sunrise, sunset, moon phase</div>
-      </a>
-      <a class="tile" href="pages/holidays.html">
-        <div class="icon-chip">🎉</div>
-        <div class="tile-name">Public Holidays</div>
-      </a>
-      <a class="tile" href="pages/qr.html">
-        <div class="icon-chip">▦</div>
-        <div class="tile-name">QR Code Generator</div>
-        <div class="tile-sub">Text, links, Wi-Fi</div>
-      </a>
-      <a class="tile" href="pages/myip.html">
-        <div class="icon-chip">🌐</div>
-        <div class="tile-name">What's My IP</div>
-      </a>
-      <a class="tile" href="pages/distance.html">
-        <div class="icon-chip">🚗</div>
-        <div class="tile-name">Distance &amp; Travel Time</div>
-        <div class="tile-sub">City to city</div>
-      </a>
+  <section id="teams-sec" class="hidden">
+    <div class="strip-head">
+      <span class="sec-title">My Teams</span>
+      <a href="pages/sports.html">All scores <span data-icon="chevron-right" data-size="16"></span></a>
     </div>
-  </div>
+    <div class="strip" id="team-strip"></div>
+  </section>
 
-  <div class="shelf">
-    <div class="shelf-label">Money &amp; Health</div>
-    <div class="tile-grid">
-      <a class="tile" href="pages/loan.html">
-        <div class="icon-chip">🏦</div>
-        <div class="tile-name">Loan Calculator</div>
-      </a>
-      <a class="tile" href="pages/health.html">
-        <div class="icon-chip">⚖️</div>
-        <div class="tile-name">Health Tracker</div>
-        <div class="tile-sub">Weight, steps, water, protein</div>
-      </a>
-    </div>
-  </div>
+  <div id="app-sections"></div>
+  <div class="no-match hidden" id="no-match">No tools match that.</div>
 
-  <div class="shelf">
-    <div class="shelf-label">Notes</div>
-    <div class="tile-grid">
-      <a class="tile" href="pages/notes.html">
-        <div class="icon-chip">📝</div>
-        <div class="tile-name">Notes</div>
-        <div class="tile-sub">With photos</div>
-      </a>
-    </div>
-  </div>
-
-  <div class="shelf">
-    <div class="shelf-label">Home &amp; Insurance</div>
-    <div class="tile-grid">
-      <a class="tile" href="pages/home-inventory.html">
-        <div class="icon-chip">🏠</div>
-        <div class="tile-name">Home Inventory</div>
-        <div class="tile-sub">Photos, value, printable</div>
-      </a>
-    </div>
-  </div>
-
-  <div class="shelf">
-    <div class="shelf-label">For Fun</div>
-    <div class="tile-grid">
-      <a class="tile" href="pages/meal-picker.html">
-        <div class="icon-chip">🎡</div>
-        <div class="tile-name">Meal Picker</div>
-        <div class="tile-sub">Spin to decide where to eat</div>
-      </a>
-      <a class="tile" href="pages/dice.html">
-        <div class="icon-chip">🎲</div>
-        <div class="tile-name">Dice &amp; Random</div>
-      </a>
-      <a class="tile" href="pages/cats.html">
-        <div class="icon-chip">🌈</div>
-        <div class="tile-name">Cats &amp; Rainbows</div>
-        <div class="tile-sub">Just because</div>
-      </a>
-      <a class="tile" href="pages/sports.html">
-        <div class="icon-chip">🏈</div>
-        <div class="tile-name">Sports Scores</div>
-        <div class="tile-sub">Scores, stats, standings &amp; news</div>
-      </a>
-      <a class="tile" href="pages/highlights.html">
-        <div class="icon-chip">🎬</div>
-        <div class="tile-name">Highlights</div>
-        <div class="tile-sub">Swipe through game clips</div>
-      </a>
-      <a class="tile" href="pages/pickem.html">
-        <div class="icon-chip">🎯</div>
-        <div class="tile-name">Family Pick'em</div>
-        <div class="tile-sub">Weekly picks &amp; leaderboard</div>
-      </a>
-      <a class="tile" href="pages/fantasy.html">
-        <div class="icon-chip">🏆</div>
-        <div class="tile-name">Fantasy Football</div>
-        <div class="tile-sub">ESPN league matchups &amp; standings</div>
-      </a>
-    </div>
-  </div>
-
-  <div class="shelf">
-    <div class="shelf-label">App Settings</div>
-    <div class="tile-grid">
-      <a class="tile" href="pages/settings.html">
-        <div class="icon-chip">🎨</div>
-        <div class="tile-name">Settings</div>
-        <div class="tile-sub">Color theme</div>
-      </a>
-    </div>
-  </div>
-
-  <div class="shelf">
-    <div class="shelf-label">Quick Utilities</div>
-    <div class="tile-grid">
-      <a class="tile" href="pages/timer.html">
-        <div class="icon-chip">⏱️</div>
-        <div class="tile-name">Timer &amp; Stopwatch</div>
-      </a>
-      <a class="tile" href="pages/flashlight.html">
-        <div class="icon-chip">🔦</div>
-        <div class="tile-name">Flashlight</div>
-      </a>
-      <a class="tile" href="pages/scan-anything.html">
-        <div class="icon-chip">▦</div>
-        <div class="tile-name">Scan Anything</div>
-        <div class="tile-sub">Any QR code or barcode</div>
-      </a>
-    </div>
-  </div>
-
-  <div class="shelf">
-    <div class="shelf-label">Secure Vault</div>
-    <div class="tile-grid">
-      <a class="tile" href="pages/password-gen.html">
-        <div class="icon-chip">🔑</div>
-        <div class="tile-name">Password Generator</div>
-      </a>
-      <a class="tile" href="pages/vault.html">
-        <div class="icon-chip">🔒</div>
-        <div class="tile-name">Logins</div>
-        <div class="tile-sub">Encrypted</div>
-      </a>
-      <a class="tile" href="pages/cards.html">
-        <div class="icon-chip">🪪</div>
-        <div class="tile-name">ID Cards</div>
-        <div class="tile-sub">Insurance, encrypted</div>
-      </a>
-    </div>
-  </div>
-
-  <p class="helper-text" style="text-align:center; margin-top:24px;">
-    Everything above stays on this device — nothing is uploaded anywhere.
-  </p>
-
+  <p class="foot">Your notes, lists and vault stay on this device.</p>
 </main>
 
 <script src="js/app.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/sports-common.js"></script>
 <script>
-  function tickClock() {
-    document.getElementById('live-clock').textContent = new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  }
-  tickClock();
-  setInterval(tickClock, 1000);
+  const esc = toolkitEscapeHtml;
 
-  const WEATHER_CODES = {
-    0: ['Clear', '☀️'], 1: ['Mainly clear', '🌤️'], 2: ['Partly cloudy', '⛅'], 3: ['Overcast', '☁️'],
-    45: ['Foggy', '🌫️'], 48: ['Foggy', '🌫️'],
-    51: ['Drizzle', '🌦️'], 53: ['Drizzle', '🌦️'], 55: ['Drizzle', '🌦️'],
-    61: ['Light rain', '🌧️'], 63: ['Rain', '🌧️'], 65: ['Heavy rain', '🌧️'],
-    71: ['Light snow', '🌨️'], 73: ['Snow', '🌨️'], 75: ['Heavy snow', '❄️'],
-    80: ['Showers', '🌦️'], 81: ['Showers', '🌦️'], 82: ['Violent showers', '⛈️'],
-    95: ['Thunderstorm', '⛈️'], 96: ['Thunderstorm', '⛈️'], 99: ['Thunderstorm', '⛈️'],
+  // ---------- the app grid ----------
+  const COLORS = {
+    sports:   ['#ff6a45', '#e0245e'],
+    kitchen:  ['#ffb52e', '#f2681f'],
+    everyday: ['#4c95ff', '#2754d4'],
+    money:    ['#36d399', '#0f9a7c'],
+    notes:    ['#f8cf4a', '#e09a00'],
+    utility:  ['#94a0b2', '#566173'],
+    vault:    ['#9b7bff', '#5a3dd8'],
+    fun:      ['#ff79bd', '#b93fd6'],
   };
+  const SECTIONS = [
+    { title: 'Sports', color: 'sports', apps: [
+      ['Scores', 'sports.html', 'goal', 'live games box scores stats nfl nba mlb college'],
+      ['Highlights', 'highlights.html', 'clapperboard', 'video clips'],
+      ["Pick'em", 'pickem.html', 'target', 'picks family game'],
+      ['Fantasy', 'fantasy.html', 'trophy', 'espn league'],
+      ['Standings', 'standings.html', 'list-ordered', 'rankings ap top 25'],
+      ['News', 'news.html', 'newspaper', 'headlines'],
+    ] },
+    { title: 'Kitchen & Shopping', color: 'kitchen', apps: [
+      ['Pantry', 'pantry.html', 'package', 'scanner barcode food stock'],
+      ['Shopping List', 'shopping-list.html', 'shopping-cart', 'grocery groceries'],
+      ['Meal Picker', 'meal-picker.html', 'utensils', 'restaurant spin wheel dinner'],
+    ] },
+    { title: 'Everyday Tools', color: 'everyday', apps: [
+      ['Calculator', 'calculator.html', 'calculator', 'math'],
+      ['Converter', 'convert.html', 'ruler', 'unit weight length measure'],
+      ['Tip', 'tip.html', 'hand-coins', 'tip split bill'],
+      ['Translator', 'translate.html', 'languages', 'translate language spanish'],
+      ['Calendar', 'calendar.html', 'calendar-days', 'perpetual day of week date'],
+      ['Age', 'age.html', 'cake', 'birthday age calculator'],
+      ['Currency', 'currency.html', 'arrow-right-left', 'exchange money rates'],
+      ['Sun & Moon', 'sky.html', 'sunrise', 'sunrise sunset moon phase'],
+      ['Holidays', 'holidays.html', 'party-popper', 'public holidays'],
+      ['Distance', 'distance.html', 'car', 'travel time drive miles'],
+      ['QR Maker', 'qr.html', 'qr-code', 'qr code generator wifi'],
+      ['My IP', 'myip.html', 'globe', 'ip address network'],
+    ] },
+    { title: 'Money & Health', color: 'money', apps: [
+      ['Loan', 'loan.html', 'landmark', 'loan payment mortgage car'],
+      ['Health', 'health.html', 'heart-pulse', 'weight steps water protein bmi'],
+    ] },
+    { title: 'Notes & Home', color: 'notes', apps: [
+      ['Notes', 'notes.html', 'notebook-pen', 'notes photos'],
+      ['Home Inventory', 'home-inventory.html', 'house', 'insurance inventory belongings'],
+    ] },
+    { title: 'Quick Utilities', color: 'utility', apps: [
+      ['Timer', 'timer.html', 'timer', 'stopwatch countdown'],
+      ['Flashlight', 'flashlight.html', 'flashlight', 'light torch'],
+      ['Scanner', 'scan-anything.html', 'scan-line', 'scan qr barcode'],
+    ] },
+    { title: 'Secure Vault', color: 'vault', apps: [
+      ['Passwords', 'password-gen.html', 'key-round', 'password generator'],
+      ['Logins', 'vault.html', 'lock', 'logins encrypted vault'],
+      ['ID Cards', 'cards.html', 'id-card', 'insurance cards id'],
+    ] },
+    { title: 'Just for Fun', color: 'fun', apps: [
+      ['Dice', 'dice.html', 'dices', 'random coin powerball'],
+      ['Cats & Rainbows', 'cats.html', 'rainbow', 'fun cats'],
+    ] },
+  ];
+
+  function renderApps(q) {
+    const query = (q || '').trim().toLowerCase();
+    const host = document.getElementById('app-sections');
+    let shown = 0;
+    host.innerHTML = SECTIONS.map((sec) => {
+      const [c1, c2] = COLORS[sec.color];
+      const apps = sec.apps.filter(([name, , , tags]) => !query || name.toLowerCase().includes(query) || tags.includes(query));
+      shown += apps.length;
+      if (!apps.length) return '';
+      return `
+        <section class="section">
+          <span class="sec-title">${esc(sec.title)}</span>
+          <div class="apps">${apps.map(([name, href, icon]) => `
+            <a class="app" href="pages/${href}" style="--c1:${c1};--c2:${c2}">
+              <span class="ic">${toolkitIcon(icon, 26, 2)}</span>
+              <span class="nm">${esc(name)}</span>
+            </a>`).join('')}</div>
+        </section>`;
+    }).join('');
+    document.getElementById('no-match').classList.toggle('hidden', shown > 0);
+    document.getElementById('teams-sec').classList.toggle('hidden', !!query || !sportsGetFavs().length);
+  }
+  document.getElementById('tool-search').addEventListener('input', (e) => renderApps(e.target.value));
+  renderApps('');
+
+  // ---------- greeting & clock ----------
+  function tick() {
+    const d = new Date();
+    const h = d.getHours();
+    document.getElementById('greeting').textContent = h < 5 ? 'Up late?' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('today').textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    const t = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const m = t.match(/^(.*?)\s?([AP]M)$/i);
+    document.getElementById('live-clock').innerHTML = m ? `${esc(m[1])}<small>${esc(m[2])}</small>` : esc(t);
+  }
+  tick();
+  setInterval(tick, 15000);
+
+  // ---------- weather ----------
+  const WX = {
+    0: ['Clear', 'sun'], 1: ['Mainly clear', 'cloud-sun'], 2: ['Partly cloudy', 'cloud-sun'], 3: ['Overcast', 'cloud'],
+    45: ['Foggy', 'cloud-fog'], 48: ['Foggy', 'cloud-fog'],
+    51: ['Drizzle', 'cloud-drizzle'], 53: ['Drizzle', 'cloud-drizzle'], 55: ['Drizzle', 'cloud-drizzle'],
+    61: ['Light rain', 'cloud-rain'], 63: ['Rain', 'cloud-rain'], 65: ['Heavy rain', 'cloud-rain'],
+    71: ['Light snow', 'cloud-snow'], 73: ['Snow', 'cloud-snow'], 75: ['Heavy snow', 'cloud-snow'],
+    80: ['Showers', 'cloud-rain'], 81: ['Showers', 'cloud-rain'], 82: ['Heavy showers', 'cloud-rain'],
+    95: ['Thunderstorms', 'cloud-lightning'], 96: ['Thunderstorms', 'cloud-lightning'], 99: ['Thunderstorms', 'cloud-lightning'],
+  };
+  const WX_KEY = 'toolkit-weather-spot';
+
+  async function loadWeather(lat, lon) {
+    const box = document.getElementById('wx');
+    try {
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=auto&forecast_days=1`);
+      const data = await res.json();
+      const temp = Math.round(data.current.temperature_2m);
+      const [desc, icon] = WX[data.current.weather_code] || ['', 'sun'];
+      const hi = data.daily ? Math.round(data.daily.temperature_2m_max[0]) : null;
+      const lo = data.daily ? Math.round(data.daily.temperature_2m_min[0]) : null;
+      box.innerHTML = `<div class="temp">${toolkitIcon(icon, 26, 2)}${temp}°</div><div class="desc">${esc(desc)}${hi != null ? ` · H ${hi}° L ${lo}°` : ''}</div>`;
+    } catch (e) {
+      box.innerHTML = `<div class="desc">Weather unavailable</div>`;
+    }
+  }
 
   document.getElementById('weather-btn').addEventListener('click', () => {
     if (!navigator.geolocation) { toolkitToast("Location isn't available on this device", { danger: true }); return; }
-    document.getElementById('live-weather').textContent = '…';
+    document.getElementById('wx').innerHTML = `<div class="desc">Finding you…</div>`;
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude, longitude } = pos.coords;
-          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`);
-          const data = await res.json();
-          const temp = Math.round(data.current.temperature_2m);
-          const code = data.current.weather_code;
-          const [desc, emoji] = WEATHER_CODES[code] || ['—', '🌡️'];
-          document.getElementById('live-weather').textContent = `${emoji} ${temp}°F`;
-          document.getElementById('live-weather-lbl').textContent = desc;
-        } catch (e) {
-          document.getElementById('live-weather').textContent = '—';
-          toolkitToast('Could not load weather', { danger: true });
-        }
+      (pos) => {
+        // Rounded to ~1 km — plenty for weather, and it means we can show it automatically next time
+        const spot = { lat: pos.coords.latitude.toFixed(2), lon: pos.coords.longitude.toFixed(2) };
+        try { localStorage.setItem(WX_KEY, JSON.stringify(spot)); } catch (e) {}
+        loadWeather(spot.lat, spot.lon);
       },
-      () => { toolkitToast('Location access was blocked', { danger: true }); document.getElementById('live-weather').textContent = '—'; }
+      () => { toolkitToast('Location access was blocked', { danger: true }); document.getElementById('wx').innerHTML = `<div class="desc">Weather off</div>`; }
     );
   });
+  try {
+    const spot = JSON.parse(localStorage.getItem(WX_KEY));
+    if (spot && spot.lat) loadWeather(spot.lat, spot.lon);
+  } catch (e) {}
+
+  // ---------- my teams strip ----------
+  async function loadTeamStrip() {
+    const favs = sportsGetFavs();
+    if (!favs.length) return;
+    const strip = document.getElementById('team-strip');
+    strip.innerHTML = '<div class="mini-game skel" style="height:96px"></div><div class="mini-game skel" style="height:96px"></div>';
+    const leagues = [...new Set(favs.map((f) => f.league))];
+    const results = await Promise.all(leagues.map((lk) =>
+      sportsGetJson(`${sportsBase(lk)}/scoreboard${lk === 'ncaaf' ? '?groups=80&limit=400' : lk === 'ncaab' ? '?groups=50&limit=400' : ''}`)
+        .then((d) => ({ lk, events: d.events || [] })).catch(() => ({ lk, events: [] }))));
+    const cards = [];
+    results.forEach(({ lk, events }) => {
+      const ids = sportsFavIds(lk);
+      events.forEach((ev) => {
+        const comp = (ev.competitions || [])[0];
+        if (!comp) return;
+        const cs = comp.competitors || [];
+        const mine = cs.find((c) => ids.has(String(c.team && c.team.id)));
+        if (!mine) return;
+        const st = (comp.status || ev.status || {}).type || {};
+        const away = cs.find((c) => c.homeAway === 'away') || cs[0];
+        const home = cs.find((c) => c.homeAway === 'home') || cs[1];
+        cards.push({ lk, ev, st, away, home, color: mine.team.color ? '#' + mine.team.color : '', order: st.state === 'in' ? 0 : st.state === 'pre' ? 1 : 2 });
+      });
+    });
+    cards.sort((a, b) => a.order - b.order);
+    if (!cards.length) {
+      strip.innerHTML = `<div class="mini-empty">No games for your teams today.</div>`;
+      return;
+    }
+    strip.innerHTML = cards.map((c) => {
+      const as = sportsScore(c.away.score), hs = sportsScore(c.home.score);
+      const post = c.st.state === 'post';
+      const row = (t, s, other) => `<div class="tm ${post && parseFloat(s) < parseFloat(other) ? 'lose' : ''}">${sportsImg(sportsTeamLogo(t.team))}<span>${esc(t.team.abbreviation || '')}</span><span class="s">${c.st.state === 'pre' ? '' : esc(s)}</span></div>`;
+      const title = `${c.away.team.abbreviation} @ ${c.home.team.abbreviation}`;
+      return `
+        <a class="mini-game" style="${c.color ? `--tc:${esc(c.color)}` : ''}" href="pages/sports.html?league=${c.lk}&game=${encodeURIComponent(c.ev.id)}&title=${encodeURIComponent(title)}">
+          <div class="lg"><span>${SPORTS_LEAGUES[c.lk].label}</span>${c.st.state === 'in' ? '<span class="live">LIVE</span>' : ''}</div>
+          ${row(c.away, as, hs)}${row(c.home, hs, as)}
+          <div class="st">${esc(c.st.shortDetail || '')}</div>
+        </a>`;
+    }).join('');
+  }
+  loadTeamStrip();
+
+  toolkitHydrateIcons();
 </script>
 </body>
 </html>

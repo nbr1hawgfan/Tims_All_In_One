@@ -10,13 +10,14 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .loc-row { display: flex; gap: 8px; margin-bottom: 6px; }
   .loc-row input { margin-bottom: 0; }
   .sun-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
   .sun-box { background: var(--primary-wash); border-radius: var(--radius-md); padding: 16px; text-align:center; }
   .sun-box .icon { font-size: 1.6rem; }
-  .sun-box .num { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 600; color: var(--primary-dark); margin-top: 4px; }
+  .sun-box .num { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 600; color: var(--ink-strong); margin-top: 4px; }
   .sun-box .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .moon-card { display: flex; align-items: center; gap: 16px; }
   .moon-card .moon-emoji { font-size: 2.6rem; }
@@ -56,7 +57,7 @@
     </div>
     <div class="card" style="text-align:center; margin-bottom:16px;">
       <div class="row-sub">Day length</div>
-      <div class="mono" style="font-size:1.1rem; font-weight:600; color:var(--primary-dark);" id="out-daylength">—</div>
+      <div class="mono" style="font-size:1.1rem; font-weight:600; color: var(--ink-strong);" id="out-daylength">—</div>
     </div>
 
     <div class="shelf-label">Tonight's moon</div>

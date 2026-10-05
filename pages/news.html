@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .news-lead { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; margin-bottom: 12px; text-decoration: none; color: var(--text); }
   .news-lead img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: var(--surface-sunken); }
@@ -74,7 +75,7 @@
   async function load() {
     const body = document.getElementById('body');
     const which = league;
-    body.innerHTML = `<div class="empty-state"><p>Loading news…</p></div>`;
+    body.innerHTML = sportsSkeleton(5, 'row');
     let arts = [];
     try {
       if (which === 'mine') {

@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .league-tabs, .seg-tabs { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 2px; }
   .league-tabs button, .seg-tabs button {
@@ -20,13 +21,16 @@
   .seg-tabs { margin-bottom: 12px; }
   .seg-tabs button { min-width: 0; font-size: 0.74rem; padding: 8px 6px; }
 
-  .game-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px; cursor: pointer; transition: box-shadow .15s, transform .15s; }
+  .game-card { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 14px 14px 18px; margin-bottom: 10px; cursor: pointer; transition: box-shadow .15s, transform .15s; }
+  .game-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(var(--ca, var(--border)) 50%, var(--ch, var(--border)) 50%); }
+  .game-status.live span:first-child::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); margin-right: 6px; vertical-align: 1px; animation: livepulse 1.4s infinite; }
+  @keyframes livepulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
   .game-card:hover { box-shadow: var(--shadow-md); }
   .game-card:active { transform: scale(0.99); }
   .game-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
-  .game-row img { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
-  .game-row .team-name { flex: 1; font-weight: 600; font-size: 0.92rem; }
-  .game-row .team-score { font-family: var(--font-mono); font-weight: 700; font-size: 1.05rem; color: var(--text-muted); }
+  .game-row img { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
+  .game-row .team-name { flex: 1; font-weight: 700; font-size: 0.95rem; }
+  .game-row .team-score { font-family: var(--font-mono); font-weight: 700; font-size: 1.15rem; color: var(--text-muted); }
   .game-row.winner .team-name, .game-row.winner .team-score { color: var(--text); font-weight: 800; }
   .game-status { display: flex; justify-content: center; gap: 8px; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
   .game-status.live { color: var(--danger); font-weight: 700; }
@@ -227,6 +231,9 @@
 
     const card = document.createElement('div');
     card.className = 'game-card';
+    const tc = (t) => (t.color && /^[0-9a-f]{6}$/i.test(t.color) ? '#' + t.color : '');
+    if (tc(away.team)) card.style.setProperty('--ca', tc(away.team));
+    if (tc(home.team)) card.style.setProperty('--ch', tc(home.team));
     card.innerHTML = `
       ${showLeague ? `<div class="game-league">${LEAGUES[leagueKey].label}</div>` : ''}
       <div class="game-row ${awayWon ? 'winner' : ''}">
@@ -250,7 +257,7 @@
 
   async function loadScores() {
     const listEl = document.getElementById('games-list');
-    listEl.innerHTML = `<div class="empty-state"><p>Loading scores…</p></div>`;
+    listEl.innerHTML = sportsSkeleton(4);
     if (currentLeague === 'mine') return loadMine(listEl);
     try {
       const data = await getJson(`${sportsBase(currentLeague)}/scoreboard`);
@@ -345,7 +352,7 @@
     showDetail();
     renderHead();
     document.getElementById('detail-tabs').innerHTML = '';
-    document.getElementById('detail-body').innerHTML = `<div class="empty-state"><p>Loading game stats…</p></div>`;
+    document.getElementById('detail-body').innerHTML = sportsSkeleton(3, 'row');
     loadSummary();
   }
 

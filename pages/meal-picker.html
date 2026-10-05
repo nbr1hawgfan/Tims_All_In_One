@@ -10,13 +10,14 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .cat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .cat-chip {
     padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
     background: var(--surface); font-size: 0.82rem; font-weight: 600; cursor: pointer; color: var(--text-muted);
   }
-  .cat-chip.active { background: var(--primary-wash); color: var(--primary-dark); border-color: var(--primary-light); }
+  .cat-chip.active { background: var(--primary-wash); color: var(--ink-strong); border-color: var(--primary-light); }
   .pool-count { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; }
 
   .wheel-wrap { position: relative; width: 100%; max-width: 320px; margin: 0 auto 18px; }
@@ -40,7 +41,7 @@
   }
   .winner-banner.show { display: block; }
   .winner-banner .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
-  .winner-banner .name { font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; color: var(--primary-dark); margin-top: 4px; }
+  .winner-banner .name { font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; color: var(--ink-strong); margin-top: 4px; }
 </style>
 </head>
 <body data-sw-path="../sw.js">

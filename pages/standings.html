@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .group-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 12px; }
   .group-card h3 { font-size: 0.86rem; margin: 2px 0 6px; }
@@ -83,7 +84,7 @@
 
   async function load() {
     const body = document.getElementById('body');
-    body.innerHTML = `<div class="empty-state"><p>Loading…</p></div>`;
+    body.innerHTML = sportsSkeleton(6, 'row');
     const which = league;
     try {
       if (which === 'ncaaf' || which === 'ncaab') await renderRankings(body, which);

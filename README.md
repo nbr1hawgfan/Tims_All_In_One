@@ -95,6 +95,21 @@ appraisal or your insurance policy's documentation requirements.
   (browsers ignore invalid color values) — barely noticeable, and a fair
   trade for keeping this simple.
 
+## Look & feel
+
+- **Dark mode is the default.** Settings → Appearance switches between Dark,
+  Light, or Match phone (follows the phone's own setting). The color themes
+  (Teal, Plum, Forest…) work in both.
+- `js/boot.js` loads in each page's `<head>` and sets the mode before the
+  page draws, so there's no white flash. New pages should include it right
+  after the stylesheet link.
+- Icons are [Lucide](https://lucide.dev) (ISC license), bundled in
+  `js/icons.js` so they work offline. To add one, copy its SVG body from
+  lucide.dev into `TOOLKIT_ICONS`.
+- The home screen's tool list lives in the `SECTIONS` array in `index.html`
+  — add a tool there (name, page, icon, search words) and it shows up in the
+  grid and in search.
+
 ## Color themes
 
 Settings → six presets (Teal, Plum, Forest, Sunset, Berry, Slate). Applies

@@ -4,7 +4,7 @@
    Bump CACHE_NAME any time files change to force a refresh.
    ============================================================ */
 
-const CACHE_NAME = 'personal-toolkit-v22';
+const CACHE_NAME = 'personal-toolkit-v23';
 
 const APP_SHELL = [
   './index.html',
@@ -14,6 +14,8 @@ const APP_SHELL = [
   './js/db.js',
   './js/secure.js',
   './js/sports-common.js',
+  './js/icons.js',
+  './js/boot.js',
   './js/pickem-config.js',
   './icons/icon-192.png',
   './icons/icon-512.png',

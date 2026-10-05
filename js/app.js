@@ -29,14 +29,63 @@ function toolkitGetTheme() {
   try { return localStorage.getItem(TOOLKIT_THEME_KEY) || 'teal'; } catch (e) { return 'teal'; }
 }
 
+// ---------- Light / dark mode ----------
+const TOOLKIT_MODE_KEY = 'personal-toolkit-mode'; // 'dark' (default) | 'light' | 'auto'
+
+function toolkitGetMode() {
+  try { return localStorage.getItem(TOOLKIT_MODE_KEY) || 'dark'; } catch (e) { return 'dark'; }
+}
+function toolkitEffectiveMode() {
+  const m = toolkitGetMode();
+  if (m === 'auto') return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  return m === 'light' ? 'light' : 'dark';
+}
+function toolkitSetMode(mode) {
+  try { localStorage.setItem(TOOLKIT_MODE_KEY, mode); } catch (e) {}
+  toolkitApplyTheme(toolkitGetTheme());
+}
+if (window.matchMedia) {
+  const mq = window.matchMedia('(prefers-color-scheme: light)');
+  const onChange = () => { if (toolkitGetMode() === 'auto') toolkitApplyTheme(toolkitGetTheme()); };
+  if (mq.addEventListener) mq.addEventListener('change', onChange); else if (mq.addListener) mq.addListener(onChange);
+}
+
+// Blend two #rrggbb colors (t = share of b)
+function toolkitMix(a, b, t) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  if (!/^#[0-9a-f]{6}$/i.test(a) || !/^#[0-9a-f]{6}$/i.test(b)) return a;
+  const x = p(a), y = p(b);
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+
+const TOOLKIT_THEME_KEYS = ['--primary', '--primary-dark', '--primary-light', '--primary-wash', '--accent', '--accent-wash'];
+
 function toolkitApplyTheme(themeId) {
   const theme = TOOLKIT_THEMES[themeId] || TOOLKIT_THEMES.teal;
   const root = document.documentElement;
-  Object.keys(theme).forEach((key) => {
-    if (key.startsWith('--')) root.style.setProperty(key, theme[key]);
-  });
+  const mode = toolkitEffectiveMode();
+  root.setAttribute('data-mode', mode);
+  let vars;
+  if (mode === 'dark') {
+    // On a dark background the brighter shade leads, and the "wash" tints get dark
+    const surface = '#141922';
+    const solidLight = String(theme['--primary-light']);
+    const isGradient = String(theme['--primary']).includes('gradient');
+    vars = {
+      '--primary': isGradient ? theme['--primary'] : solidLight,
+      '--primary-dark': isGradient ? theme['--primary-dark'] : theme['--primary'],
+      '--primary-light': toolkitMix(solidLight, '#ffffff', 0.35),
+      '--primary-wash': toolkitMix(surface, solidLight, 0.18),
+      '--accent': theme['--accent'],
+      '--accent-wash': toolkitMix(surface, String(theme['--accent']), 0.16),
+    };
+  } else {
+    vars = {};
+    TOOLKIT_THEME_KEYS.forEach((k) => { vars[k] = theme[k]; });
+  }
+  TOOLKIT_THEME_KEYS.forEach((k) => root.style.setProperty(k, vars[k]));
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta && !String(theme['--primary']).includes('gradient')) meta.setAttribute('content', theme['--primary']);
+  if (meta) meta.setAttribute('content', mode === 'dark' ? '#0b0e13' : '#f3f6f8');
 }
 
 function toolkitSetTheme(themeId) {

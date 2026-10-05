@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   .modal-overlay {
@@ -21,7 +22,7 @@
   .low-badge { background: var(--danger-wash); color: var(--danger); }
   .scan-status { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; }
   .qty-stepper { display: flex; align-items: center; gap: 10px; }
-  .qty-stepper button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 1.1rem; font-weight: 700; cursor: pointer; color: var(--primary-dark); }
+  .qty-stepper button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 1.1rem; font-weight: 700; cursor: pointer; color: var(--ink-strong); }
   .qty-stepper .qty-num { font-family: var(--font-mono); font-size: 1.1rem; min-width: 28px; text-align: center; }
   #reader { width: 100%; border-radius: var(--radius-md); overflow: hidden; margin-bottom: 12px; background: #000; min-height: 260px; }
   #reader video { border-radius: var(--radius-md); width: 100% !important; }
@@ -207,7 +208,7 @@
       const header = `<div style="grid-column:1/-1; font-size:0.7rem; color:var(--text-muted);">Per 100g${n.servingSize ? ' · serving: ' + toolkitEscapeHtml(n.servingSize) : ''}</div>`;
       const cells = rows.map(([label, val, unit]) => `
         <div style="text-align:center;">
-          <div class="mono" style="font-weight:600; color:var(--primary-dark);">${Number(val).toFixed(val < 10 ? 1 : 0)}${unit}</div>
+          <div class="mono" style="font-weight:600; color: var(--ink-strong);">${Number(val).toFixed(val < 10 ? 1 : 0)}${unit}</div>
           <div class="row-sub" style="font-size:0.68rem;">${label}</div>
         </div>
       `).join('');

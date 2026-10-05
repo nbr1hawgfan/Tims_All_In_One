@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .team-hero { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px; position: relative; overflow: hidden; }
   .team-hero::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--team-color, var(--primary-light)); }
@@ -133,7 +134,7 @@
   async function renderBody() {
     const body = document.getElementById('body');
     const which = tab;
-    body.innerHTML = `<div class="empty-state"><p>Loading…</p></div>`;
+    body.innerHTML = sportsSkeleton(5, 'row');
     try {
       if (which === 'schedule') await renderSchedule(body);
       if (which === 'roster') await renderRoster(body);

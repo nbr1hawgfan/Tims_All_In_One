@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .rainbow-bar {
     height: 10px; border-radius: 999px; margin-bottom: 18px;
@@ -30,19 +31,19 @@
     background: linear-gradient(135deg, var(--accent-wash), var(--primary-wash));
     border-radius: var(--radius-lg); padding: 18px; text-align: center; margin-bottom: 16px; font-size: 1rem;
   }
-  .fun-title { text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: var(--primary-dark); margin-bottom: 4px; }
+  .fun-title { text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: var(--ink-strong); margin-bottom: 4px; }
   .fun-sub { text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px; }
   .toggle-row-fun { display: flex; gap: 8px; margin-bottom: 14px; }
   .toggle-row-fun button {
     flex: 1; padding: 9px 0; border-radius: var(--radius-sm); border: 1px solid var(--border);
     background: var(--surface); font-weight: 700; font-size: 0.85rem; cursor: pointer; color: var(--text-muted);
   }
-  .toggle-row-fun button.active { background: var(--primary-wash); color: var(--primary-dark); border-color: var(--primary-light); }
+  .toggle-row-fun button.active { background: var(--primary-wash); color: var(--ink-strong); border-color: var(--primary-light); }
   .cat-img.rainbow-mode { animation: hueSpin 3s linear infinite; }
   @keyframes hueSpin { 0% { filter: hue-rotate(0deg) saturate(1.4); } 100% { filter: hue-rotate(360deg) saturate(1.4); } }
   .pun-card {
     background: var(--surface); border: 2px dashed var(--primary-light); border-radius: var(--radius-lg);
-    padding: 18px; text-align: center; margin-bottom: 16px; font-size: 1.05rem; font-weight: 600; color: var(--primary-dark);
+    padding: 18px; text-align: center; margin-bottom: 16px; font-size: 1.05rem; font-weight: 600; color: var(--ink-strong);
   }
   #confetti-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 999; }
   .confetti-piece { position: absolute; top: -20px; border-radius: 2px; animation: confettiFall linear forwards; }

@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
 <style>
   .tab-row { display: flex; gap: 6px; margin-bottom: 18px; overflow-x: auto; padding-bottom: 2px; }
   .tab-row button {
@@ -20,12 +21,12 @@
   .tab-row button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
   .metric-box { background: var(--primary-wash); border-radius: var(--radius-md); padding: 14px; text-align:center; }
-  .metric-box .num { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; color: var(--primary-dark); }
+  .metric-box .num { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; color: var(--ink-strong); }
   .metric-box .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .quick-add-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
   .quick-add-row button {
     flex: 1; min-width: 64px; padding: 10px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-    background: var(--surface); font-family: var(--font-mono); font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--primary-dark);
+    background: var(--surface); font-family: var(--font-mono); font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--ink-strong);
   }
   .quick-add-row button:hover { background: var(--primary-wash); }
   .progress-track { height: 14px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden; margin: 8px 0; }
@@ -33,7 +34,7 @@
   .goal-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
   .goal-row input { width: 70px; margin-bottom: 0; padding: 4px 8px; text-align: center; }
   .today-hero { text-align: center; margin-bottom: 6px; }
-  .today-hero .num { font-family: var(--font-mono); font-size: 2.4rem; font-weight: 700; color: var(--primary-dark); line-height: 1; }
+  .today-hero .num { font-family: var(--font-mono); font-size: 2.4rem; font-weight: 700; color: var(--ink-strong); line-height: 1; }
   .today-hero .sub { color: var(--text-muted); font-size: 0.8rem; margin-top: 2px; }
 </style>
 </head>
@@ -70,7 +71,7 @@
       <label for="bodyfat">Body fat % (optional — skip if unknown)</label>
       <input type="number" id="bodyfat" inputmode="decimal" placeholder="e.g. 22">
 
-      <div id="navy-toggle" style="margin: -6px 0 16px; font-size: 0.82rem; color: var(--primary); cursor: pointer; text-decoration: underline;">
+      <div id="navy-toggle" style="margin: -6px 0 16px; font-size: 0.82rem; color: var(--ink-accent); cursor: pointer; text-decoration: underline;">
         Don't know your body fat %? Estimate it (Navy method)
       </div>
       <div id="navy-calc" style="display:none; background: var(--surface-sunken); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">

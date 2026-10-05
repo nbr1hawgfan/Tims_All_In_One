@@ -70,6 +70,14 @@ function sportsTimeAgo(iso) {
   return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+// Gray placeholder cards shown while data loads
+function sportsSkeleton(count = 4, kind = 'game') {
+  const one = kind === 'row'
+    ? `<div class="skel-card"><div class="skel skel-line" style="width:70%"></div><div class="skel skel-line" style="width:45%"></div></div>`
+    : `<div class="skel-card"><div style="display:flex;gap:10px;align-items:center;margin:4px 0"><div class="skel" style="width:28px;height:28px;border-radius:50%"></div><div class="skel skel-line" style="flex:1;max-width:55%"></div><div class="skel skel-line" style="width:26px;margin-left:auto"></div></div><div style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><div class="skel" style="width:28px;height:28px;border-radius:50%"></div><div class="skel skel-line" style="flex:1;max-width:45%"></div><div class="skel skel-line" style="width:26px;margin-left:auto"></div></div></div>`;
+  return Array(count).fill(one).join('');
+}
+
 // ---------- Favorite teams (this device only) ----------
 const SPORTS_FAV_KEY = 'toolkit-fav-teams';
 

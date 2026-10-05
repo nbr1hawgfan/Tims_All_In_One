@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Standings — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .group-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 12px; }
+  .group-card h3 { font-size: 0.86rem; margin: 2px 0 6px; }
+  .tbl-wrap { overflow-x: auto; margin: 0 -12px; padding: 0 12px; }
+  table.st { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  table.st th, table.st td { padding: 7px 5px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  table.st tr:last-child td { border-bottom: 0; }
+  table.st th { font-size: 0.66rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  table.st td { font-family: var(--font-mono); }
+  table.st th:first-child, table.st td:first-child { text-align: left; }
+  table.st td:first-child { font-family: var(--font-body); font-weight: 600; }
+  table.st td:first-child a { display: flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; }
+  table.st td:first-child img { width: 22px; height: 22px; object-fit: contain; }
+  table.st td .seed { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); width: 16px; text-align: right; }
+  table.st tr.fav td { background: var(--accent-wash); }
+  .poll-title { font-size: 0.74rem; color: var(--text-muted); margin: -4px 0 10px; }
+  .trend.up { color: var(--success); } .trend.down { color: var(--danger); }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Standings</h1></div>
+</header>
+
+<main class="shell">
+  <div id="nav-slot"></div>
+  <div class="league-tabs" id="league-tabs">
+    <button data-league="nfl">NFL</button>
+    <button data-league="nba">NBA</button>
+    <button data-league="mlb">MLB</button>
+    <button data-league="ncaaf">CFB</button>
+    <button data-league="ncaab">CBB</button>
+  </div>
+  <div id="body"></div>
+  <p class="helper-text" style="text-align:center;">Your teams are highlighted. Tap any team for its schedule, roster and news. College tabs show the AP Top 25.</p>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/sports-common.js"></script>
+<script>
+  const esc = toolkitEscapeHtml;
+  document.getElementById('nav-slot').replaceWith(sportsRenderNav('standings'));
+
+  const TAB_KEY = 'standings-last-tab';
+  let league;
+  try { league = localStorage.getItem(TAB_KEY); } catch (e) {}
+  if (!SPORTS_LEAGUES[league]) {
+    const fav = sportsGetFavs()[0];
+    league = fav ? fav.league : 'nfl';
+  }
+
+  // Which columns to show per league, by ESPN stat name
+  const COLS = {
+    nfl: [['wins', 'W'], ['losses', 'L'], ['ties', 'T'], ['winPercent', 'PCT'], ['pointsFor', 'PF'], ['pointsAgainst', 'PA'], ['streak', 'STRK']],
+    nba: [['wins', 'W'], ['losses', 'L'], ['winPercent', 'PCT'], ['gamesBehind', 'GB'], ['streak', 'STRK']],
+    mlb: [['wins', 'W'], ['losses', 'L'], ['winPercent', 'PCT'], ['gamesBehind', 'GB'], ['streak', 'STRK']],
+  };
+
+  function setTab() {
+    document.querySelectorAll('#league-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.league === league));
+  }
+  document.querySelectorAll('#league-tabs button').forEach((b) => b.addEventListener('click', () => {
+    league = b.dataset.league;
+    try { localStorage.setItem(TAB_KEY, league); } catch (e) {}
+    setTab();
+    load();
+  }));
+  setTab();
+
+  async function load() {
+    const body = document.getElementById('body');
+    body.innerHTML = `<div class="empty-state"><p>Loading…</p></div>`;
+    const which = league;
+    try {
+      if (which === 'ncaaf' || which === 'ncaab') await renderRankings(body, which);
+      else await renderStandings(body, which);
+    } catch (e) {
+      if (which === league) body.innerHTML = `<div class="empty-state"><p>Couldn’t load standings — check your connection.</p></div>`;
+    }
+  }
+
+  // Flatten ESPN's nested groups (league → conference → division) into tables
+  function collectGroups(node, out, parentName) {
+    if (node.standings && node.standings.entries && node.standings.entries.length) {
+      out.push({ name: node.name || parentName || '', entries: node.standings.entries });
+    }
+    (node.children || []).forEach((c) => collectGroups(c, out, node.name));
+    return out;
+  }
+
+  async function renderStandings(body, lk) {
+    const L = SPORTS_LEAGUES[lk];
+    const data = await sportsGetJson(`${SPORTS_API_V2}/${L.sport}/${L.league}/standings`);
+    if (lk !== league) return;
+    const groups = collectGroups(data, []);
+    if (!groups.length) { body.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No standings yet — probably off-season.</p></div>`; return; }
+    const favs = sportsFavIds(lk);
+    const cols = COLS[lk];
+    body.innerHTML = '';
+    groups.forEach((g) => {
+      const stat = (e, name) => {
+        const s = (e.stats || []).find((x) => x.name === name || x.type === name);
+        return s ? (s.displayValue != null ? s.displayValue : s.value) : '';
+      };
+      const statNum = (e, name) => {
+        const s = (e.stats || []).find((x) => x.name === name);
+        return s && s.value != null ? s.value : NaN;
+      };
+      const entries = g.entries.slice().sort((a, b) => {
+        const sa = statNum(a, 'playoffSeed'), sb = statNum(b, 'playoffSeed');
+        if (!isNaN(sa) && !isNaN(sb) && sa && sb && sa !== sb) return sa - sb;
+        return (statNum(b, 'winPercent') || 0) - (statNum(a, 'winPercent') || 0);
+      });
+      const showCols = cols.filter(([n]) => entries.some((e) => stat(e, n) !== ''));
+      const hasSeed = entries.some((e) => statNum(e, 'playoffSeed') > 0);
+      const card = document.createElement('div');
+      card.className = 'group-card';
+      card.innerHTML = `
+        <h3>${esc(g.name)}</h3>
+        <div class="tbl-wrap"><table class="st">
+          <thead><tr><th>Team</th>${showCols.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead>
+          <tbody>${entries.map((e) => {
+            const t = e.team || {};
+            return `<tr class="${favs.has(String(t.id)) ? 'fav' : ''}"><td><a href="${sportsTeamUrl(lk, t.id)}">${hasSeed ? `<span class="seed">${statNum(e, 'playoffSeed') || ''}</span>` : ''}${sportsImg(sportsTeamLogo(t))}<span>${esc(t.shortDisplayName || t.displayName || t.abbreviation)}</span></a></td>${showCols.map(([n]) => `<td>${esc(stat(e, n))}</td>`).join('')}</tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      body.appendChild(card);
+    });
+  }
+
+  async function renderRankings(body, lk) {
+    const data = await sportsGetJson(`${sportsBase(lk)}/rankings`);
+    if (lk !== league) return;
+    const rankings = data.rankings || [];
+    const poll = rankings.find((r) => /AP/i.test(r.name || r.shortName || '')) || rankings[0];
+    if (!poll || !(poll.ranks || []).length) { body.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No rankings posted right now.</p></div>`; return; }
+    const favs = sportsFavIds(lk);
+    const others = (poll.others || []).slice(0, 10);
+    body.innerHTML = `
+      <div class="group-card">
+        <h3>${esc(poll.name || 'Top 25')}</h3>
+        ${poll.headline || poll.occurrence ? `<div class="poll-title">${esc(poll.headline || (poll.occurrence && poll.occurrence.displayValue) || '')}</div>` : ''}
+        <div class="tbl-wrap"><table class="st">
+          <thead><tr><th>Team</th><th>Rec</th><th>Pts</th><th>Prev</th></tr></thead>
+          <tbody>${poll.ranks.map((r) => {
+            const t = r.team || {};
+            const name = t.nickname && t.location && t.nickname !== t.location ? t.location : (t.location || t.name || t.nickname || t.abbreviation);
+            const prev = r.previous && r.previous !== r.current ? r.previous : (r.previous ? '—' : 'NR');
+            const trendCls = r.previous && r.previous > r.current ? 'up' : (r.previous && r.previous < r.current ? 'down' : '');
+            return `<tr class="${favs.has(String(t.id)) ? 'fav' : ''}"><td><a href="${sportsTeamUrl(lk, t.id)}"><span class="seed">${r.current}</span>${sportsImg(sportsTeamLogo(t))}<span>${esc(name)}</span></a></td><td>${esc(r.recordSummary || '')}</td><td>${esc(r.points != null ? Math.round(r.points) : '')}${r.firstPlaceVotes ? ` (${r.firstPlaceVotes})` : ''}</td><td class="trend ${trendCls}">${esc(prev)}</td></tr>`;
+          }).join('')}</tbody>
+        </table></div>
+      </div>
+      ${others.length ? `<p class="helper-text">Also receiving votes: ${others.map((o) => esc((o.team && (o.team.location || o.team.name)) || '')).join(', ')}</p>` : ''}`;
+  }
+
+  load();
+</script>
+</body>
+</html>

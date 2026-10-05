@@ -4,7 +4,7 @@
    Bump CACHE_NAME any time files change to force a refresh.
    ============================================================ */
 
-const CACHE_NAME = 'personal-toolkit-v20';
+const CACHE_NAME = 'personal-toolkit-v21';
 
 const APP_SHELL = [
   './index.html',
@@ -13,6 +13,8 @@ const APP_SHELL = [
   './js/app.js',
   './js/db.js',
   './js/secure.js',
+  './js/sports-common.js',
+  './js/pickem-config.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './pages/pantry.html',
@@ -45,6 +47,11 @@ const APP_SHELL = [
   './pages/settings.html',
   './pages/sports.html',
   './pages/fantasy.html',
+  './pages/team.html',
+  './pages/standings.html',
+  './pages/news.html',
+  './pages/highlights.html',
+  './pages/pickem.html',
 ];
 
 self.addEventListener('install', (event) => {
@@ -67,6 +74,18 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) {
     event.respondWith(
       fetch(event.request).catch(() => new Response('', { status: 503 }))
+    );
+    return;
+  }
+
+  // Settings files: network-first, so pasting in a new URL takes effect without a cache bump.
+  if (url.pathname.endsWith('/pickem-config.js')) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return response;
+      }).catch(() => caches.match(event.request))
     );
     return;
   }

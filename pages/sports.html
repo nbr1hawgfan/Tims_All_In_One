@@ -31,6 +31,12 @@
   .game-status { display: flex; justify-content: center; gap: 8px; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
   .game-status.live { color: var(--danger); font-weight: 700; }
   .game-status .tap-hint { color: var(--primary-light); font-weight: 700; }
+  .game-league { font-size: 0.64rem; font-weight: 800; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
+  .game-row .rank { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); margin-right: 4px; font-weight: 600; }
+  .my-team-chips { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px; }
+  .my-team-chips a, .my-team-chips button { flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); text-decoration: none; color: var(--text); font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+  .my-team-chips img { width: 22px; height: 22px; object-fit: contain; }
+  .my-team-chips button { padding-left: 12px; color: var(--text-muted); }
 
   .fantasy-link { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); background: var(--accent-wash); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 14px; font-weight: 700; font-size: 0.9rem; }
   .fantasy-link span:last-child { margin-left: auto; color: var(--text-muted); }
@@ -132,20 +138,20 @@
 <main class="shell">
   <!-- ===== Scoreboard view ===== -->
   <section id="list-view">
+    <div id="nav-slot"></div>
     <div class="league-tabs" id="league-tabs">
-      <button data-league="nfl" class="active">NFL</button>
+      <button data-league="mine">★ Mine</button>
+      <button data-league="nfl">NFL</button>
       <button data-league="nba">NBA</button>
       <button data-league="mlb">MLB</button>
       <button data-league="ncaaf">CFB</button>
       <button data-league="ncaab">CBB</button>
     </div>
 
-    <a class="fantasy-link" href="fantasy.html"><span>🏆</span><span>My ESPN Fantasy League</span><span>›</span></a>
-
     <div id="games-list"></div>
 
     <p class="helper-text" style="text-align:center; margin-top:16px;">
-      Tap any game for the box score and player stats. Scores come from ESPN's public scoreboard — unofficial, but reliable in practice. Games only appear during that league's season.
+      Tap any game for the box score and player stats. Your teams’ games show first with a ★. Scores come from ESPN's public scoreboard — unofficial, but reliable in practice.
     </p>
   </section>
 
@@ -162,100 +168,137 @@
 </main>
 
 <script src="../js/app.js"></script>
+<script src="../js/sports-common.js"></script>
 <script>
-  // sport/league path segments for ESPN's public APIs
-  const LEAGUES = {
-    nfl:   { sport: 'football',   league: 'nfl' },
-    nba:   { sport: 'basketball', league: 'nba' },
-    mlb:   { sport: 'baseball',   league: 'mlb' },
-    ncaaf: { sport: 'football',   league: 'college-football' },
-    ncaab: { sport: 'basketball', league: 'mens-college-basketball' },
-  };
-  const API = 'https://site.api.espn.com/apis/site/v2/sports';
-  const API_WEB = 'https://site.web.api.espn.com/apis/common/v3/sports';
+  const LEAGUES = SPORTS_LEAGUES;
+  const API = SPORTS_API;
+  const API_WEB = SPORTS_API_WEB;
   const esc = toolkitEscapeHtml;
+  const getJson = sportsGetJson;
+  const img = sportsImg;
+  const teamLogo = sportsTeamLogo;
 
-  let currentLeague = 'nfl';
-  let lastEvents = [];
+  const TAB_KEY = 'sports-last-tab';
+  let currentLeague = localStorageGet(TAB_KEY) || (sportsGetFavs().length ? 'mine' : 'nfl');
+  if (currentLeague !== 'mine' && !LEAGUES[currentLeague]) currentLeague = 'nfl';
 
-  // ---------- helpers ----------
-  async function getJson(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
-  }
-  function img(src, cls = '', alt = '') {
-    return src ? `<img src="${esc(src)}" class="${cls}" alt="${esc(alt)}" loading="lazy" onerror="this.style.visibility='hidden'">` : '';
-  }
-  function teamLogo(team) {
-    if (!team) return '';
-    return team.logo || (team.logos && team.logos[0] && team.logos[0].href) || '';
-  }
   function num(v) {
     const n = parseFloat(String(v == null ? '' : v).replace(/,/g, ''));
     return isNaN(n) ? 0 : n;
   }
 
+  document.getElementById('nav-slot').replaceWith(sportsRenderNav('scores'));
+
   // ---------- scoreboard ----------
+  function setActiveTab() {
+    document.querySelectorAll('#league-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.league === currentLeague));
+  }
   document.querySelectorAll('#league-tabs button').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#league-tabs button').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
       currentLeague = btn.dataset.league;
+      localStorageSet(TAB_KEY, currentLeague);
+      setActiveTab();
       loadScores();
     });
   });
+  setActiveTab();
+
+  function eventTeams(event) {
+    const comp = event.competitions && event.competitions[0];
+    return comp ? (comp.competitors || []).map((c) => String(c.team && c.team.id)) : [];
+  }
+
+  function gameCard(event, leagueKey, favIds, showLeague) {
+    const comp = event.competitions && event.competitions[0];
+    if (!comp) return null;
+    const competitors = comp.competitors || [];
+    const home = competitors.find((c) => c.homeAway === 'home');
+    const away = competitors.find((c) => c.homeAway === 'away');
+    if (!home || !away) return null;
+
+    const status = comp.status || event.status;
+    const state = status.type.state; // 'pre' | 'in' | 'post'
+    const hs = sportsScore(home.score), as = sportsScore(away.score);
+    const homeWon = state === 'post' && parseInt(hs, 10) > parseInt(as, 10);
+    const awayWon = state === 'post' && parseInt(as, 10) > parseInt(hs, 10);
+    const rank = (c) => (c.curatedRank && c.curatedRank.current && c.curatedRank.current < 99) ? `<span class="rank">${c.curatedRank.current}</span>` : '';
+    const star = (c) => favIds.has(String(c.team.id)) ? '<span class="fav-badge">★</span>' : '';
+    const odds = comp.odds && comp.odds[0] && state === 'pre' ? [comp.odds[0].details, comp.odds[0].overUnder ? 'O/U ' + comp.odds[0].overUnder : ''].filter(Boolean).join(' · ') : '';
+
+    const card = document.createElement('div');
+    card.className = 'game-card';
+    card.innerHTML = `
+      ${showLeague ? `<div class="game-league">${LEAGUES[leagueKey].label}</div>` : ''}
+      <div class="game-row ${awayWon ? 'winner' : ''}">
+        ${img(away.team.logo)}
+        <div class="team-name">${star(away)}${rank(away)}${esc(away.team.shortDisplayName || away.team.displayName)}</div>
+        <div class="team-score">${state === 'pre' ? '' : esc(as)}</div>
+      </div>
+      <div class="game-row ${homeWon ? 'winner' : ''}">
+        ${img(home.team.logo)}
+        <div class="team-name">${star(home)}${rank(home)}${esc(home.team.shortDisplayName || home.team.displayName)}</div>
+        <div class="team-score">${state === 'pre' ? '' : esc(hs)}</div>
+      </div>
+      <div class="game-status ${state === 'in' ? 'live' : ''}">
+        <span>${esc(status.type.shortDetail || status.type.detail || '')}${odds ? ` · ${esc(odds)}` : ''}</span>
+        <span class="tap-hint">${state === 'pre' ? 'Preview ›' : 'Stats ›'}</span>
+      </div>
+    `;
+    card.addEventListener('click', () => openGame(event, leagueKey));
+    return card;
+  }
 
   async function loadScores() {
     const listEl = document.getElementById('games-list');
     listEl.innerHTML = `<div class="empty-state"><p>Loading scores…</p></div>`;
+    if (currentLeague === 'mine') return loadMine(listEl);
     try {
-      const L = LEAGUES[currentLeague];
-      const data = await getJson(`${API}/${L.sport}/${L.league}/scoreboard`);
-      const events = data.events || [];
-      lastEvents = events;
+      const data = await getJson(`${sportsBase(currentLeague)}/scoreboard`);
+      const favIds = sportsFavIds(currentLeague);
+      const events = (data.events || []).slice();
       if (events.length === 0) {
         listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🏟️</div><p>No games today.</p><p>Probably off-season, or nothing scheduled.</p></div>`;
         return;
       }
+      // Followed teams first, otherwise ESPN's order
+      events.sort((a, b) => (eventTeams(b).some((id) => favIds.has(id)) ? 1 : 0) - (eventTeams(a).some((id) => favIds.has(id)) ? 1 : 0));
       listEl.innerHTML = '';
-      events.forEach((event) => {
-        const comp = event.competitions && event.competitions[0];
-        if (!comp) return;
-        const competitors = comp.competitors || [];
-        const home = competitors.find((c) => c.homeAway === 'home');
-        const away = competitors.find((c) => c.homeAway === 'away');
-        if (!home || !away) return;
-
-        const status = comp.status || event.status;
-        const state = status.type.state; // 'pre' | 'in' | 'post'
-        const homeWon = state === 'post' && parseInt(home.score, 10) > parseInt(away.score, 10);
-        const awayWon = state === 'post' && parseInt(away.score, 10) > parseInt(home.score, 10);
-
-        const card = document.createElement('div');
-        card.className = 'game-card';
-        card.innerHTML = `
-          <div class="game-row ${awayWon ? 'winner' : ''}">
-            ${img(away.team.logo)}
-            <div class="team-name">${esc(away.team.shortDisplayName || away.team.displayName)}</div>
-            <div class="team-score">${state === 'pre' ? '' : esc(away.score)}</div>
-          </div>
-          <div class="game-row ${homeWon ? 'winner' : ''}">
-            ${img(home.team.logo)}
-            <div class="team-name">${esc(home.team.shortDisplayName || home.team.displayName)}</div>
-            <div class="team-score">${state === 'pre' ? '' : esc(home.score)}</div>
-          </div>
-          <div class="game-status ${state === 'in' ? 'live' : ''}">
-            <span>${esc(status.type.shortDetail || status.type.detail || '')}</span>
-            <span class="tap-hint">${state === 'pre' ? 'Preview ›' : 'Stats ›'}</span>
-          </div>
-        `;
-        card.addEventListener('click', () => openGame(event));
-        listEl.appendChild(card);
-      });
+      events.forEach((event) => { const c = gameCard(event, currentLeague, favIds, false); if (c) listEl.appendChild(c); });
     } catch (e) {
       listEl.innerHTML = `<div class="empty-state"><p>Could not load scores — check your connection.</p></div>`;
     }
+  }
+
+  async function loadMine(listEl) {
+    const favs = sportsGetFavs();
+    if (!favs.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⭐</div><p>Follow your teams to see all their games in one place.</p><button class="btn" id="pick-teams" style="margin-top:10px;">Pick my teams</button></div>`;
+      listEl.querySelector('#pick-teams').addEventListener('click', () => sportsOpenTeamPicker(loadScores));
+      return;
+    }
+    const leagues = [...new Set(favs.map((f) => f.league))];
+    const results = await Promise.all(leagues.map((lk) => getJson(`${sportsBase(lk)}/scoreboard${lk === 'ncaaf' || lk === 'ncaab' ? '?groups=' + (lk === 'ncaaf' ? 80 : 50) + '&limit=400' : ''}`).then((d) => ({ lk, events: d.events || [] })).catch(() => ({ lk, events: [], failed: true }))));
+    listEl.innerHTML = '';
+
+    // Team chips → team pages
+    const chips = document.createElement('div');
+    chips.className = 'my-team-chips';
+    chips.innerHTML = favs.map((f) => `<a href="${sportsTeamUrl(f.league, f.id)}">${img(f.logo)}<span>${esc(f.abbr || f.name)}</span></a>`).join('') + `<button id="edit-teams">✎ Edit</button>`;
+    chips.querySelector('#edit-teams').addEventListener('click', () => sportsOpenTeamPicker(loadScores));
+    listEl.appendChild(chips);
+
+    let count = 0;
+    results.forEach(({ lk, events }) => {
+      const favIds = sportsFavIds(lk);
+      events.filter((ev) => eventTeams(ev).some((id) => favIds.has(id))).forEach((ev) => {
+        const c = gameCard(ev, lk, favIds, true);
+        if (c) { listEl.appendChild(c); count++; }
+      });
+    });
+    if (!count) {
+      listEl.insertAdjacentHTML('beforeend', `<div class="empty-state"><div class="empty-icon">🗓️</div><p>None of your teams play today.</p><p>Tap a team above for its full schedule.</p></div>`);
+    }
+    if (results.some((r) => r.failed)) toolkitToast('Some scores couldn’t load', { danger: true });
   }
 
   // ---------- view switching ----------
@@ -267,7 +310,13 @@
   backLink.addEventListener('click', (e) => {
     if (!detailView.classList.contains('hidden')) {
       e.preventDefault();
-      history.back();
+      if (deepLinked) {
+        // Opened straight into a game (from a team page) — go back there if we can
+        if (history.length > 1 && document.referrer) history.back();
+        else { deepLinked = false; closeGame(); }
+      } else {
+        history.back();
+      }
     }
   });
   window.addEventListener('popstate', () => { if (!detailView.classList.contains('hidden')) closeGame(); });
@@ -289,9 +338,9 @@
   // ---------- game detail ----------
   let current = null; // { event, summary, tab, teamIdx, scoring }
 
-  function openGame(event) {
-    history.pushState({ game: event.id }, '');
-    current = { event, summary: null, tab: null, teamIdx: 0, scoring: localStorageGet('sports-fp-scoring') || 'ppr' };
+  function openGame(event, leagueKey, replace) {
+    if (replace) history.replaceState({ game: event.id }, ''); else history.pushState({ game: event.id }, '');
+    current = { event, league: leagueKey || (currentLeague === 'mine' ? 'nfl' : currentLeague), summary: null, tab: null, teamIdx: 0, scoring: localStorageGet('sports-fp-scoring') || 'ppr' };
     document.getElementById('page-title').textContent = event.shortName || 'Game';
     showDetail();
     renderHead();
@@ -304,7 +353,7 @@
 
   async function loadSummary(manual) {
     if (!current) return;
-    const L = LEAGUES[currentLeague];
+    const L = LEAGUES[current.league];
     const id = current.event.id;
     try {
       const summary = await getJson(`${API}/${L.sport}/${L.league}/summary?event=${encodeURIComponent(id)}`);
@@ -337,9 +386,12 @@
     const comp = headerComp();
     const status = comp.status || current.event.status || { type: {} };
     const cs = comp.competitors || [];
+    if (!cs.length) { document.getElementById('detail-head').innerHTML = `<div class="status">Loading game…</div>`; return; }
     const home = cs.find((c) => c.homeAway === 'home') || cs[1] || {};
     const away = cs.find((c) => c.homeAway === 'away') || cs[0] || {};
     const state = status.type.state;
+    const titleEl = document.getElementById('page-title');
+    if (titleEl.textContent === 'Game' && away.team && home.team) titleEl.textContent = `${away.team.abbreviation} @ ${home.team.abbreviation}`;
     const rec = (c) => {
       const r = c.record || c.records;
       if (Array.isArray(r) && r[0]) return r[0].summary || r[0].displayValue || '';
@@ -354,7 +406,7 @@
     document.getElementById('detail-head').innerHTML = `
       <div class="teams">
         ${teamBlock(away)}
-        <div class="score">${state === 'pre' ? '<span class="dash">vs</span>' : `${esc(away.score)}<span class="dash">–</span>${esc(home.score)}`}</div>
+        <div class="score">${state === 'pre' ? '<span class="dash">vs</span>' : `${esc(sportsScore(away.score))}<span class="dash">–</span>${esc(sportsScore(home.score))}`}</div>
         ${teamBlock(home)}
       </div>
       <div class="status ${state === 'in' ? 'live' : ''}">${esc(status.type.detail || status.type.shortDetail || '')}</div>
@@ -369,7 +421,7 @@
     if (s.leaders && s.leaders.length) tabs.push(['leaders', 'Leaders']);
     if (hasPlayers) tabs.push(['box', 'Box Score']);
     if ((box.teams || []).some((t) => (t.statistics || []).length)) tabs.push(['team', 'Team Stats']);
-    if (currentLeague === 'nfl' && hasPlayers) tabs.push(['fantasy', 'Fantasy']);
+    if (current.league === 'nfl' && hasPlayers) tabs.push(['fantasy', 'Fantasy']);
     if (s.scoringPlays && s.scoringPlays.length) tabs.push(['scoring', 'Scoring']);
     return tabs;
   }
@@ -696,7 +748,7 @@
     const seasonEl = backdrop.querySelector('#sheet-season');
     if (!athlete.id) { seasonEl.innerHTML = ''; return; }
     try {
-      const L = LEAGUES[currentLeague];
+      const L = LEAGUES[current.league];
       const ov = await getJson(`${API_WEB}/${L.sport}/${L.league}/athletes/${encodeURIComponent(athlete.id)}/overview`);
       const st = ov.statistics;
       if (!st || !(st.splits || []).length) throw new Error('none');
@@ -710,7 +762,15 @@
     }
   }
 
-  loadScores();
+  // Deep link from team pages: sports.html?league=nfl&game=401…
+  const params = new URLSearchParams(location.search);
+  let deepLinked = false;
+  if (params.get('game') && LEAGUES[params.get('league')]) {
+    deepLinked = true;
+    openGame({ id: params.get('game'), shortName: params.get('title') || 'Game' }, params.get('league'), true);
+  } else {
+    loadScores();
+  }
 </script>
 </body>
 </html>

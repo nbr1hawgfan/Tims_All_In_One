@@ -125,6 +125,73 @@ auto-refresh every 30 seconds):
 Tap any player for a sheet with that game's line plus their season and
 career stats (from ESPN's athlete feed).
 
+## My Teams, Standings, News & Highlights
+
+All the sports pages share a strip of tabs at the top (Scores · Standings ·
+News · Highlights · Pick'em · Fantasy).
+
+- **My Teams** — tap ★ Mine on Scores (or ✎ Edit) to follow teams in any
+  league. Followed teams' games float to the top with a ★, and the ★ Mine tabs
+  on Scores, News and Highlights show only those teams. Saved on that device.
+- **Team pages** (`team.html`) — tap a team chip or any team in Standings for
+  its schedule (tap a game for the box score), roster and news. The ☆ there
+  follows/unfollows.
+- **Standings** — NFL/NBA/MLB by conference, your teams highlighted. The
+  college tabs show the AP Top 25 instead (full conference standings for
+  hundreds of schools aren't useful on a phone).
+- **News** — ESPN headlines per league, or a merged feed for your teams.
+  Stories open on ESPN.
+- **Highlights** — a full-screen, swipe-up feed of ESPN highlight clips, like
+  TikTok. When ESPN's feed includes a direct video file it plays right in the
+  feed (muted until you tap 🔇); otherwise the slide shows the thumbnail and
+  the ▶ opens the clip on ESPN. Which you get depends on ESPN — test it on
+  your phone.
+- Game cards on Scores now show the betting line (spread and over/under)
+  before kickoff when ESPN has one, and AP rank for college teams.
+
+## Family Pick'em
+
+Weekly NFL pick'em for family and friends, plus that week's biggest college
+games (up to 5, chosen by AP ranking). 1 point per correct pick, a season
+leaderboard, and a 🏆 for winning each week. Picks lock at each game's
+kickoff (checked on the server), and everyone's picks for a game appear once
+it locks.
+
+People join with a **group code**, a **name**, and a **4-digit PIN** (so
+nobody can change someone else's picks). Same name + PIN signs in on another
+phone.
+
+### One-time setup
+
+1. Create a new Google Sheet (e.g. "Family Pick'em"). **Extensions → Apps
+   Script**, delete the sample code, paste in `pickem-relay/Code.gs`, save.
+2. **Project Settings** (gear) → **Script Properties** → add:
+   - `GROUP_CODE` — the invite code, e.g. `JENNINGS26` (required)
+   - `GROUP_NAME` — e.g. `Jennings Family Pick'em` (optional)
+   - `ADMIN_PIN` — lets you reset someone's forgotten PIN from the Invite tab (optional)
+   - `COLLEGE_GAMES` — how many college games per week, default 5, `0` for NFL only (optional)
+3. Back in the editor, pick `testSetup` and **Run** (approve the permissions).
+   The log should show this week's game count, and the Sheet gets Players,
+   Picks and Games tabs.
+4. **Deploy → New deployment → Web app**, Execute as **Me**, Who has access
+   **Anyone**. Copy the `/exec` URL.
+5. Paste that URL into `js/pickem-config.js` and push to GitHub.
+6. Open Pick'em, join yourself, then use the **Invite** tab to text everyone
+   the link (the group code fills in automatically).
+
+Notes:
+- The Sheet is the database — you can look at it any time. Please don't edit
+  the Picks tab by hand mid-week.
+- If you change `Code.gs` later, use **Deploy → Manage deployments → Edit →
+  New version** so the URL stays the same.
+- Anyone with the group code can join, so share it only with people you invite.
+
+### NCAA tournament bracket (coming in March)
+
+The pick'em backend is built so a bracket challenge can be added on top of
+it — same group code, names and PINs, new bracket page. ESPN posts the
+bracket on Selection Sunday, so that's the time to build and test it.
+
 ## Fantasy Football (ESPN leagues)
 
 `pages/fantasy.html` — also reachable from the Sports Scores page. Enter the

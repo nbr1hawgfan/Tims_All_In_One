@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pick'em — Personal Toolkit</title>
+<meta name="theme-color" content="#0a5870">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .seg-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .seg-tabs button { flex: 1; padding: 9px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+  .seg-tabs button.active { background: var(--primary); color: #fff; border-color: transparent; }
+  .field { margin-bottom: 12px; }
+  .field input { width: 100%; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 1rem; background: var(--surface); color: var(--text); }
+  .field input.pin { letter-spacing: 0.5em; font-family: var(--font-mono); text-align: center; font-size: 1.3rem; }
+
+  .who-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .who-bar .gname { font-family: var(--font-display); font-weight: 800; font-size: 1.02rem; }
+  .who-bar .me { font-size: 0.76rem; color: var(--text-muted); }
+  .who-bar button { margin-left: auto; background: none; border: 0; color: var(--primary-light); font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+
+  .week-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .week-nav .wk { font-family: var(--font-display); font-weight: 800; font-size: 1rem; text-align: center; }
+  .week-nav .icon-btn:disabled { opacity: 0.3; }
+  .week-sub { text-align: center; font-size: 0.74rem; color: var(--text-muted); margin-bottom: 12px; }
+  .save-state { text-align: center; font-size: 0.74rem; font-weight: 700; min-height: 1.1em; margin-bottom: 8px; }
+  .save-state.ok { color: var(--success); } .save-state.err { color: var(--danger); } .save-state.busy { color: var(--text-muted); }
+
+  .day-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; margin: 14px 2px 6px; }
+  .pk-game { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px; margin-bottom: 8px; }
+  .pk-game .gmeta { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin: 0 2px 8px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+  .pk-game .gmeta .live { color: var(--danger); }
+  .pk-sides { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: stretch; }
+  .pk-sides .at { align-self: center; font-size: 0.72rem; color: var(--text-muted); font-weight: 700; }
+  .pk-team { position: relative; border: 2px solid var(--border); background: var(--surface); color: var(--text); border-radius: var(--radius-sm); padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; font-family: inherit; }
+  .pk-team img { width: 38px; height: 38px; object-fit: contain; }
+  .pk-team .ab { font-family: var(--font-display); font-weight: 800; font-size: 0.86rem; }
+  .pk-team .ab small { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-muted); margin-right: 3px; }
+  .pk-team .rc { font-size: 0.64rem; color: var(--text-muted); }
+  .pk-team .sc { font-family: var(--font-mono); font-weight: 800; font-size: 1.05rem; }
+  .pk-team.mine { border-color: var(--primary-light); background: var(--primary-wash); }
+  .pk-team.mine::after { content: '✓'; position: absolute; top: 4px; right: 6px; font-weight: 900; color: var(--primary-light); font-size: 0.8rem; }
+  .pk-team.right { border-color: var(--success); background: var(--success-wash); }
+  .pk-team.right::after { content: '✓'; color: var(--success); }
+  .pk-team.wrong { border-color: var(--danger); background: var(--danger-wash); }
+  .pk-team.wrong::after { content: '✗'; color: var(--danger); }
+  .pk-team:disabled { cursor: default; }
+  .pk-team.won .ab { text-decoration: underline; text-decoration-thickness: 2px; }
+  .pk-who { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; margin-top: 6px; font-size: 0.68rem; color: var(--text-muted); }
+  .pk-who div { text-align: center; line-height: 1.35; }
+  .pk-who .gap { width: 14px; }
+  .lock-note { font-size: 0.74rem; color: var(--text-muted); text-align: center; margin-top: 8px; }
+
+  table.lb { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  table.lb th, table.lb td { padding: 9px 6px; border-bottom: 1px solid var(--border); text-align: right; }
+  table.lb th { font-size: 0.66rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  table.lb th:nth-child(2), table.lb td:nth-child(2) { text-align: left; }
+  table.lb td:first-child { color: var(--text-muted); font-family: var(--font-mono); width: 26px; text-align: left; }
+  table.lb td { font-family: var(--font-mono); }
+  table.lb td:nth-child(2) { font-family: var(--font-body); font-weight: 700; }
+  table.lb tr.me td { background: var(--primary-wash); }
+  .wk-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+  .wk-row:last-child { border-bottom: 0; }
+  .wk-row span:last-child { color: var(--text-muted); text-align: right; }
+
+  .code-box { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 700; letter-spacing: 0.12em; text-align: center; padding: 14px; background: var(--surface-sunken); border-radius: var(--radius-sm); margin: 8px 0 12px; }
+  details summary { cursor: pointer; font-weight: 700; font-size: 0.86rem; }
+  .err-box { background: var(--danger-wash); border-radius: var(--radius-sm); padding: 12px; font-size: 0.86rem; margin-bottom: 12px; color: var(--danger); }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="sports.html" class="back-link" aria-label="Back to sports">←</a>
+  <div><h1>Pick'em</h1></div>
+</header>
+
+<main class="shell">
+  <div id="nav-slot"></div>
+
+  <!-- ===== Relay not configured ===== -->
+  <section id="setup-view" class="hidden">
+    <div class="card">
+      <h3>Pick'em isn’t connected yet</h3>
+      <p class="helper-text">Set up the Google Sheet backend (README → “Family Pick'em”), then paste its web app URL into <code>js/pickem-config.js</code> so it works for everyone. To test first on just this phone, paste it here:</p>
+      <div class="field"><input id="relay-input" placeholder="https://script.google.com/macros/s/…/exec"></div>
+      <button class="btn" id="relay-save">Use this URL</button>
+    </div>
+  </section>
+
+  <!-- ===== Join / sign in ===== -->
+  <section id="join-view" class="hidden">
+    <div class="card">
+      <h3>Join the family Pick'em</h3>
+      <p class="helper-text">Already joined on another phone? Use the same name and PIN to sign in.</p>
+      <div id="join-error"></div>
+      <div class="field"><label for="j-code">Group code</label><input id="j-code" autocapitalize="characters" autocomplete="off" placeholder="From whoever invited you"></div>
+      <div class="field"><label for="j-name">Your name</label><input id="j-name" maxlength="20" autocomplete="nickname" placeholder="What everyone will see"></div>
+      <div class="field"><label for="j-pin">4-digit PIN</label><input id="j-pin" class="pin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>
+      <button class="btn block" id="join-btn">Join / Sign in</button>
+      <p class="helper-text">Your PIN just keeps others from changing your picks. Don’t reuse a bank PIN.</p>
+    </div>
+  </section>
+
+  <!-- ===== Game ===== -->
+  <section id="game-view" class="hidden">
+    <div class="who-bar">
+      <div><div class="gname" id="g-name">Pick'em</div><div class="me" id="g-me"></div></div>
+      <button id="signout">Switch player</button>
+    </div>
+    <div class="seg-tabs" id="tabs">
+      <button data-tab="week" class="active">My Picks</button>
+      <button data-tab="board">Leaderboard</button>
+      <button data-tab="invite">Invite</button>
+    </div>
+    <div id="body"></div>
+  </section>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/sports-common.js"></script>
+<script src="../js/pickem-config.js"></script>
+<script>
+  const esc = toolkitEscapeHtml;
+  document.getElementById('nav-slot').replaceWith(sportsRenderNav('pickem'));
+
+  const SESSION_KEY = 'toolkit-pickem';
+  const RELAY_KEY = 'toolkit-pickem-relay';
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
+
+  let relay = (typeof PICKEM_RELAY_URL !== 'undefined' && PICKEM_RELAY_URL) || lsGet(RELAY_KEY) || '';
+  let session = null;
+  try { session = JSON.parse(lsGet(SESSION_KEY)); } catch (e) {}
+  let tab = 'week';
+  let weekData = null;
+  let viewWeek = null;      // weekKey being viewed (null = current)
+  let pending = {};         // gameId -> side, waiting to save
+  let saveTimer = null;
+  let pollTimer = null;
+
+  const views = ['setup-view', 'join-view', 'game-view'];
+  function show(id) { views.forEach((v) => document.getElementById(v).classList.toggle('hidden', v !== id)); }
+
+  // ---------- talking to the Apps Script backend ----------
+  async function api(action, extra) {
+    const body = Object.assign({ action }, session || {}, extra || {});
+    let res;
+    try {
+      // text/plain keeps this a "simple" request, which Apps Script can answer cross-site
+      res = await fetch(relay, { method: 'POST', body: JSON.stringify(body) });
+    } catch (e) {
+      throw new Error('Can’t reach the Pick\'em server — check your connection.');
+    }
+    let json;
+    try { json = await res.json(); } catch (e) { throw new Error('The Pick\'em server sent something unexpected. Is the web app deployed with access “Anyone”?'); }
+    if (json.error) throw new Error(json.error);
+    return json;
+  }
+
+  // ---------- setup ----------
+  document.getElementById('relay-save').addEventListener('click', () => {
+    const v = document.getElementById('relay-input').value.trim();
+    if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(v)) { toolkitToast('That should be a script.google.com link', { danger: true }); return; }
+    relay = v; lsSet(RELAY_KEY, v); start();
+  });
+
+  // ---------- join ----------
+  const params = new URLSearchParams(location.search);
+  document.getElementById('join-btn').addEventListener('click', async () => {
+    const code = document.getElementById('j-code').value.trim().toUpperCase();
+    const name = document.getElementById('j-name').value.trim();
+    const pin = document.getElementById('j-pin').value.trim();
+    const errEl = document.getElementById('join-error');
+    errEl.innerHTML = '';
+    if (!code || !name) { errEl.innerHTML = `<div class="err-box">Enter the group code and your name.</div>`; return; }
+    if (!/^\d{4}$/.test(pin)) { errEl.innerHTML = `<div class="err-box">PIN must be exactly 4 digits.</div>`; return; }
+    const btn = document.getElementById('join-btn');
+    btn.disabled = true; btn.textContent = 'Joining…';
+    try {
+      session = { code, name, pin };
+      const r = await api('join');
+      session.name = r.player;
+      lsSet(SESSION_KEY, JSON.stringify(session));
+      toolkitToast(r.returning ? `Welcome back, ${r.player}!` : `You’re in, ${r.player}!`);
+      enterGame();
+    } catch (e) {
+      session = null;
+      errEl.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Join / Sign in';
+    }
+  });
+
+  document.getElementById('signout').addEventListener('click', () => {
+    if (!confirm('Sign out of Pick\'em on this phone? Your picks are saved — sign back in any time with your name and PIN.')) return;
+    lsSet(SESSION_KEY, null);
+    session = null; weekData = null; viewWeek = null;
+    clearInterval(pollTimer);
+    showJoin();
+  });
+
+  function showJoin() {
+    show('join-view');
+    document.getElementById('j-code').value = params.get('code') || (session && session.code) || '';
+    document.getElementById('j-name').value = '';
+    document.getElementById('j-pin').value = '';
+  }
+
+  // ---------- game ----------
+  document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
+    tab = b.dataset.tab;
+    document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('active', x === b));
+    renderTab();
+  }));
+
+  function enterGame() {
+    show('game-view');
+    document.getElementById('g-me').textContent = `Playing as ${session.name}`;
+    renderTab();
+  }
+
+  function renderTab() {
+    clearInterval(pollTimer);
+    const body = document.getElementById('body');
+    if (tab === 'week') return loadWeek(true);
+    if (tab === 'board') return loadBoard(body);
+    renderInvite(body);
+  }
+
+  async function loadWeek(showLoading) {
+    const body = document.getElementById('body');
+    if (showLoading || !weekData) body.innerHTML = `<div class="empty-state"><p>Loading this week’s games…</p></div>`;
+    try {
+      const d = await api('week', viewWeek ? { weekKey: viewWeek } : {});
+      if (tab !== 'week') return;
+      weekData = d;
+      viewWeek = d.weekKey;
+      document.getElementById('g-name').textContent = d.group;
+      renderWeek();
+      // Live games → refresh every minute
+      clearInterval(pollTimer);
+      if (d.games.some((g) => g.state === 'in')) pollTimer = setInterval(() => { if (!Object.keys(pending).length) loadWeek(false); }, 60000);
+    } catch (e) {
+      if (/PIN|No player|group code/i.test(e.message)) { lsSet(SESSION_KEY, null); showJoin(); document.getElementById('join-error').innerHTML = `<div class="err-box">${esc(e.message)}</div>`; return; }
+      body.innerHTML = `<div class="err-box">${esc(e.message)}</div><button class="btn secondary" id="retry">Try again</button>`;
+      body.querySelector('#retry').addEventListener('click', () => loadWeek(true));
+    }
+  }
+
+  function locked(g) {
+    return g.state !== 'pre' || Date.now() >= new Date(g.kickoff).getTime();
+  }
+
+  function myPick(gid) {
+    return pending[gid] != null ? pending[gid] : (weekData.myPicks[gid] || '');
+  }
+
+  function renderWeek() {
+    const d = weekData;
+    const body = document.getElementById('body');
+    const games = d.games || [];
+    const openGames = games.filter((g) => !locked(g));
+    const pickedOpen = openGames.filter((g) => myPick(g.id)).length;
+    let correct = 0, decided = 0;
+    games.forEach((g) => { const p = myPick(g.id); if (g.winner && p) { decided++; if (g.winner === p) correct++; } });
+
+    let html = `
+      <div class="week-nav">
+        <button class="icon-btn" id="wk-prev" ${d.prev ? '' : 'disabled'} aria-label="Previous week">‹</button>
+        <div class="wk">${esc(d.label)}</div>
+        <button class="icon-btn" id="wk-next" ${d.next ? '' : 'disabled'} aria-label="Next week">›</button>
+      </div>
+      <div class="week-sub">${games.length ? `${decided ? `You’re ${correct}-${decided - correct} this week · ` : ''}${openGames.length ? `${pickedOpen}/${openGames.length} open games picked` : 'All games locked'}` : ''}</div>
+      <div class="save-state" id="save-state"></div>`;
+
+    if (!games.length) {
+      html += `<div class="empty-state"><div class="empty-icon">🏈</div><p>No games this week.</p><p>Off-season — check back in September!</p></div>`;
+      body.innerHTML = html;
+      wireNav();
+      return;
+    }
+
+    let lastDay = '';
+    games.forEach((g) => {
+      const day = new Date(g.kickoff).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+      if (day !== lastDay) { html += `<div class="day-label">${esc(day)}</div>`; lastDay = day; }
+      const isLocked = locked(g);
+      const mine = myPick(g.id);
+      const time = new Date(g.kickoff).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const status = g.state === 'in' ? `<span class="live">● ${esc(g.detail)}</span>` : g.state === 'post' ? esc(g.detail || 'Final') : (isLocked ? 'Locked' : `Locks ${esc(time)}`);
+      const sideBtn = (side) => {
+        const t = g[side] || {};
+        let cls = '';
+        if (mine === side) cls = g.winner ? (g.winner === side ? 'right' : 'wrong') : 'mine';
+        if (g.winner === side) cls += ' won';
+        return `
+          <button class="pk-team ${cls}" data-g="${esc(g.id)}" data-side="${side}" ${isLocked ? 'disabled' : ''} aria-pressed="${mine === side}">
+            ${sportsImg(t.logo)}
+            <div class="ab">${t.rank ? `<small>${t.rank}</small>` : ''}${esc(t.abbr || t.name)}</div>
+            ${g.state !== 'pre' ? `<div class="sc">${esc(t.score)}</div>` : `<div class="rc">${esc(t.record || '')}</div>`}
+          </button>`;
+      };
+      let who = '';
+      const rev = d.revealed[g.id];
+      if (isLocked && rev && rev.length) {
+        const names = (side) => rev.filter((r) => r.pick === side).map((r) => esc(r.name)).join(', ') || '—';
+        who = `<div class="pk-who"><div>${names('away')}</div><div class="gap"></div><div>${names('home')}</div></div>`;
+      } else if (!isLocked && d.counts[g.id]) {
+        const c = d.counts[g.id];
+        const n = (x) => (x ? `${x} pick${x === 1 ? '' : 's'}` : '');
+        who = `<div class="pk-who"><div>${n(c.away)}</div><div class="gap"></div><div>${n(c.home)}</div></div>`;
+      }
+      html += `
+        <div class="pk-game">
+          <div class="gmeta"><span>${g.league === 'ncaaf' ? 'College' : 'NFL'}</span><span>${status}</span></div>
+          <div class="pk-sides">${sideBtn('away')}<div class="at">@</div>${sideBtn('home')}</div>
+          ${who}
+        </div>`;
+    });
+
+    if ((d.standings || []).length) {
+      html += `<div class="day-label">This week’s standings</div><div class="card" style="padding:4px 12px;">${d.standings.map((s, i) => `
+        <div class="wk-row"><span>${i + 1}. ${esc(s.name)}${s.name === session.name ? ' (you)' : ''}</span><span>${s.correct} right${s.decided ? ` of ${s.decided}` : ''} · ${s.picked} picked</span></div>`).join('')}</div>`;
+    }
+    html += `<p class="lock-note">Each game locks at kickoff. Everyone’s picks show once a game locks.</p>`;
+    body.innerHTML = html;
+    wireNav();
+
+    body.querySelectorAll('.pk-team:not(:disabled)').forEach((btn) => btn.addEventListener('click', () => {
+      const gid = btn.dataset.g, side = btn.dataset.side;
+      // tap your current pick again to clear it
+      pending[gid] = myPick(gid) === side ? '' : side;
+      renderWeek();
+      queueSave();
+    }));
+  }
+
+  function wireNav() {
+    const prev = document.getElementById('wk-prev'), next = document.getElementById('wk-next');
+    prev.addEventListener('click', () => goWeek(weekData.prev));
+    next.addEventListener('click', () => goWeek(weekData.next));
+  }
+
+  async function goWeek(key) {
+    if (!key) return;
+    if (Object.keys(pending).length) await saveNow();
+    viewWeek = key;
+    loadWeek(true);
+  }
+
+  function setSaveState(text, cls) {
+    const el = document.getElementById('save-state');
+    if (el) { el.textContent = text; el.className = 'save-state ' + (cls || ''); }
+  }
+
+  function queueSave() {
+    setSaveState('Saving…', 'busy');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNow, 700);
+  }
+
+  async function saveNow() {
+    clearTimeout(saveTimer);
+    const picks = pending;
+    if (!Object.keys(picks).length) return;
+    pending = {};
+    try {
+      const r = await api('save', { weekKey: weekData.weekKey, picks });
+      r.saved.forEach((gid) => { if (picks[gid]) weekData.myPicks[gid] = picks[gid]; else delete weekData.myPicks[gid]; });
+      if (r.rejected.length) toolkitToast(`${r.rejected.length} pick${r.rejected.length > 1 ? 's' : ''} didn’t save — ${r.rejected[0].reason}`, { danger: true, duration: 3500 });
+      if (tab === 'week') { renderWeek(); setSaveState(r.rejected.length ? 'Some picks locked' : 'Saved ✓', r.rejected.length ? 'err' : 'ok'); }
+    } catch (e) {
+      // put them back so the next tap retries
+      pending = Object.assign({}, picks, pending);
+      setSaveState('Couldn’t save — tap a pick to retry', 'err');
+      toolkitToast(e.message, { danger: true });
+    }
+  }
+
+  // Try not to lose picks if the app is closed mid-save
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Object.keys(pending).length) saveNow(); });
+
+  async function loadBoard(body) {
+    body.innerHTML = `<div class="empty-state"><p>Adding up the scores…</p></div>`;
+    try {
+      const year = weekData ? weekData.year : '';
+      const d = await api('leaderboard', year ? { year } : {});
+      if (tab !== 'board') return;
+      if (!d.table.length) { body.innerHTML = `<div class="empty-state"><p>No players yet.</p></div>`; return; }
+      const pct = (r) => (r.decided ? Math.round((r.correct / r.decided) * 100) + '%' : '—');
+      body.innerHTML = `
+        <div class="card" style="padding:4px 12px;">
+          <table class="lb">
+            <thead><tr><th>#</th><th>Player</th><th>Right</th><th>Pct</th><th>🏆</th></tr></thead>
+            <tbody>${d.table.map((r, i) => `<tr class="${r.name === session.name ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.correct}</td><td>${pct(r)}</td><td>${r.weekWins || ''}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+        <p class="helper-text">Right = correct picks this season. 🏆 = weeks won (most correct picks once every game that week is final; ties share it).</p>
+        ${d.weeks.length ? `<div class="day-label">Week by week</div><div class="card" style="padding:4px 12px;">${d.weeks.slice().reverse().map((w) => `
+          <div class="wk-row"><span>${esc(w.label)}</span><span>${w.complete ? (w.winners.length ? `🏆 ${esc(w.winners.join(', '))} (${w.best})` : '—') : 'In progress'}</span></div>`).join('')}</div>` : ''}`;
+    } catch (e) {
+      body.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderInvite(body) {
+    const link = `${location.origin}${location.pathname}?code=${encodeURIComponent(session.code)}`;
+    const msgText = `Join our family NFL Pick'em! Open ${link} — group code ${session.code}. Pick a name and a 4-digit PIN.`;
+    body.innerHTML = `
+      <div class="card">
+        <h3>Invite friends &amp; family</h3>
+        <p class="helper-text">Send them this link. The group code fills in for them — they just choose a name and a 4-digit PIN.</p>
+        <div class="code-box">${esc(session.code)}</div>
+        <div class="btn-row">
+          <button class="btn" id="share-btn">Share invite</button>
+          <button class="btn secondary" id="copy-btn">Copy link</button>
+        </div>
+      </div>
+      <div class="card">
+        <details>
+          <summary>Admin: reset someone’s PIN</summary>
+          <p class="helper-text">Needs the ADMIN_PIN you set in Apps Script.</p>
+          <div class="field"><input id="a-target" placeholder="Player name"></div>
+          <div class="field"><input id="a-new" class="pin" inputmode="numeric" maxlength="4" placeholder="New PIN"></div>
+          <div class="field"><input id="a-admin" type="password" inputmode="numeric" placeholder="Admin PIN"></div>
+          <button class="btn secondary" id="a-go">Reset PIN</button>
+        </details>
+      </div>`;
+    body.querySelector('#share-btn').addEventListener('click', async () => {
+      if (navigator.share) { try { await navigator.share({ title: "Family Pick'em", text: msgText }); } catch (e) {} }
+      else copy(msgText);
+    });
+    body.querySelector('#copy-btn').addEventListener('click', () => copy(link));
+    body.querySelector('#a-go').addEventListener('click', async () => {
+      try {
+        const r = await api('resetPin', { target: body.querySelector('#a-target').value, newPin: body.querySelector('#a-new').value, adminPin: body.querySelector('#a-admin').value });
+        toolkitToast(r.message);
+      } catch (e) { toolkitToast(e.message, { danger: true }); }
+    });
+  }
+
+  function copy(text) {
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toolkitToast('Copied'), () => prompt('Copy this:', text));
+    else prompt('Copy this:', text);
+  }
+
+  function start() {
+    if (!relay) { show('setup-view'); return; }
+    if (session && session.code && session.name && session.pin) enterGame();
+    else showJoin();
+  }
+  start();
+</script>
+</body>
+</html>

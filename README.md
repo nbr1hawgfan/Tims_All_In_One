@@ -112,6 +112,56 @@ are free and keyless but **unofficial and undocumented** — ESPN could change
 or remove them without notice. They've been stable in practice for years,
 but this is worth knowing going in.
 
+**Game & player stats.** Tap any game for its detail view (live games
+auto-refresh every 30 seconds):
+
+- **Leaders** — top passer/rusher/receiver (or points/rebounds/assists, etc.) per team
+- **Box Score** — every player's line for each team, all five leagues
+- **Team Stats** — side-by-side team totals, with the better number highlighted
+- **Fantasy** (NFL only) — fantasy points for every player in that game,
+  computed from the box score, with a PPR / Half PPR / Standard toggle
+- **Scoring** — scoring plays in order
+
+Tap any player for a sheet with that game's line plus their season and
+career stats (from ESPN's athlete feed).
+
+## Fantasy Football (ESPN leagues)
+
+`pages/fantasy.html` — also reachable from the Sports Scores page. Enter the
+league ID (from the league's URL on fantasy.espn.com: `leagueId=1234567`)
+and it shows this week's matchups (tap to see both lineups), standings, and
+every team's roster with weekly points and ESPN projections. Settings are
+saved on that device only.
+
+### Fantasy relay (private leagues)
+
+ESPN leagues are private by default, and ESPN won't hand private league data
+to a browser app. The fix is a small Google Apps Script "relay" that fetches
+the league for you. The code is in `fantasy-relay/Code.gs`.
+
+1. Go to script.google.com → **New project** → paste in `Code.gs`.
+2. Get your two ESPN cookies: log into fantasy.espn.com on a computer, open
+   the browser's developer tools → **Application** (Chrome) or **Storage**
+   (Firefox) → Cookies → `espn.com`, and copy the values of `espn_s2` and `SWID`.
+3. In Apps Script: **Project Settings** (gear) → **Script Properties** → add
+   `LEAGUE_ID`, `ESPN_S2`, and `SWID` (keep the `{ }` braces on SWID).
+4. Run `testRelay` once from the editor (approve permissions) — the log
+   should say "OK" with your league name.
+5. **Deploy → New deployment → Web app**, Execute as **Me**, access **Anyone**.
+   Copy the `/exec` URL into the app's Fantasy settings (⚙) → Relay URL.
+
+Notes:
+- The relay only serves the one league in `LEAGUE_ID`. Anyone who has the
+  relay URL can read that league (read-only), so only share it with family.
+- Cookies stay in Script Properties on Google's side — never in this repo.
+- `espn_s2` can expire (usually after a year, or if you log out everywhere).
+  If the league suddenly stops loading with a "private" message, grab fresh
+  cookies and update the Script Properties — no redeploy needed.
+- The relay caches responses for 60 seconds so a group refreshing on game day
+  doesn't hit ESPN repeatedly.
+- Public leagues can work without the relay — leave Relay URL blank and try
+  it first. If it fails, set up the relay.
+
 ## Age Calculator extras
 
 Two additions pulled in automatically once a birth date is entered:

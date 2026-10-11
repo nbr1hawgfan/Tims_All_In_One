@@ -4,7 +4,7 @@
    Bump CACHE_NAME any time files change to force a refresh.
    ============================================================ */
 
-const CACHE_NAME = 'personal-toolkit-v23';
+const CACHE_NAME = 'personal-toolkit-v24';
 
 const APP_SHELL = [
   './index.html',
@@ -16,6 +16,8 @@ const APP_SHELL = [
   './js/sports-common.js',
   './js/icons.js',
   './js/boot.js',
+  './js/family.js',
+  './js/facts.js',
   './js/pickem-config.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -54,6 +56,10 @@ const APP_SHELL = [
   './pages/news.html',
   './pages/highlights.html',
   './pages/pickem.html',
+  './pages/players.html',
+  './pages/trivia.html',
+  './pages/family-list.html',
+  './pages/birthdays.html',
 ];
 
 self.addEventListener('install', (event) => {

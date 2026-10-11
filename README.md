@@ -207,6 +207,49 @@ The pick'em backend is built so a bracket challenge can be added on top of
 it — same group code, names and PINs, new bracket page. ESPN posts the
 bracket on Selection Sunday, so that's the time to build and test it.
 
+## Player Search, TV channels & Trivia
+
+- **TV channel** — game cards (pre-game and live), the game screen, team
+  schedules, Pick'em and the home-screen team strip show the network from
+  ESPN's feed (CBS, FOX, ESPN, Prime Video…).
+- **Player Search** (`players.html`) — search any player ESPN covers (NFL,
+  NBA, MLB, NHL, WNBA, college). Each player page shows bio, season and career
+  stats, a recent game log, and news. Tap a player in any box score or team
+  roster to open their page. Recently viewed players are remembered.
+- **Sports Trivia** (`trivia.html`) — a **Daily Family Challenge** (same 10
+  questions for everyone each day, first try counts, family leaderboard for
+  today / last 7 days / all time) plus unlimited **Practice Rounds**.
+  Questions come from the free Open Trivia Database (opentdb.com), sports
+  category. The daily quiz needs the Family Hub (below); practice works for
+  anyone.
+
+## Family List, Birthdays & Fact of the Day
+
+- **Family List** (`family-list.html`, also the "Family List" tab on Shopping
+  List) — one grocery list the whole family shares. Anyone can add, check off
+  or remove items; it refreshes every 15 seconds and shows who added what.
+  The original Shopping List ("My List") is unchanged and stays on your phone.
+- **Birthdays & Anniversaries** (`birthdays.html`) — shared family dates with
+  ages ("Turns 40"), anniversary numbers, and a countdown. Anything in the next
+  2 weeks also shows in a "Coming up" card on the home screen.
+- **Fact of the day** — on the home screen, from a built-in list of ~100
+  checked, family-friendly facts (sports, Arkansas, animals, space, food…).
+  Add more in `js/facts.js`.
+
+### The Family Hub (shared features)
+
+Pick'em, the Family List, Birthdays and the Daily Trivia all run on the same
+Google Sheet + Apps Script (`pickem-relay/Code.gs`) and the same sign-in
+(group code, name, 4-digit PIN). Sign in once on a phone and every family
+page uses it. New tabs (List, Dates, Trivia, TriviaScores) are created in the
+Sheet automatically.
+
+**Updating an existing setup:** paste the new `Code.gs` over the old one,
+save, then **Deploy → Manage deployments → ✏️ Edit → Version: New version →
+Deploy**. That keeps the same web app URL, so nothing in the app changes.
+(If you instead make a *new* deployment, you'd have to paste the new URL into
+`js/pickem-config.js`.)
+
 ## Fantasy Football (ESPN leagues)
 
 `pages/fantasy.html` — also reachable from the Sports Scores page. Enter the

@@ -33,7 +33,7 @@
   .sched-row.next { border-color: var(--primary-light); box-shadow: var(--shadow-sm); }
 
   .roster-group { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; margin: 14px 0 6px; }
-  .ros-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .ros-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); text-decoration: none; color: var(--text); }
   .ros-row img, .ros-row .ph { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--surface-sunken); flex-shrink: 0; }
   .ros-row .jn { width: 30px; font-family: var(--font-mono); color: var(--text-muted); font-size: 0.8rem; text-align: right; }
   .ros-row .pm { flex: 1; min-width: 0; }
@@ -170,6 +170,8 @@
         res = `${sportsScore(me.score)}-${sportsScore(opp.score)} · LIVE`;
       } else {
         res = esc(timeStr || st.shortDetail || '');
+        const tv = sportsTv(comp);
+        if (tv) res += `<div style="margin-top:3px">${sportsTvBadge(tv)}</div>`;
       }
       const isNext = !nextMarked && st.state !== 'post';
       if (isNext) nextMarked = true;
@@ -199,12 +201,13 @@
     const row = (a) => {
       const head = a.headshot && a.headshot.href;
       const bits = [a.position && a.position.abbreviation, a.age ? a.age + ' yrs' : '', a.displayHeight, a.experience && a.experience.years != null ? (a.experience.years ? a.experience.years + ' yr exp' : 'Rookie') : '', a.college && (a.college.shortName || a.college.name)].filter(Boolean);
+      const L = SPORTS_LEAGUES[leagueKey];
       return `
-        <div class="ros-row">
+        <a class="ros-row" href="players.html?sport=${encodeURIComponent(L.sport)}&league=${encodeURIComponent(L.league)}&id=${encodeURIComponent(a.id)}">
           <div class="jn">${a.jersey ? '#' + esc(a.jersey) : ''}</div>
           ${head ? sportsImg(head) : '<div class="ph"></div>'}
           <div class="pm"><div>${esc(a.displayName || a.fullName)}</div><div>${esc(bits.join(' · '))}</div></div>
-        </div>`;
+        </a>`;
     };
     const html = groups.map((g) => {
       const label = { offense: 'Offense', defense: 'Defense', specialTeam: 'Special Teams', pitchers: 'Pitchers', catchers: 'Catchers', infielders: 'Infielders', outfielders: 'Outfielders', designatedHitter: 'Designated Hitter' }[g.position] || g.position || '';

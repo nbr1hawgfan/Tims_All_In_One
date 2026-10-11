@@ -32,7 +32,7 @@
   .game-row .team-name { flex: 1; font-weight: 700; font-size: 0.95rem; }
   .game-row .team-score { font-family: var(--font-mono); font-weight: 700; font-size: 1.15rem; color: var(--text-muted); }
   .game-row.winner .team-name, .game-row.winner .team-score { color: var(--text); font-weight: 800; }
-  .game-status { display: flex; justify-content: center; gap: 8px; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .game-status { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
   .game-status.live { color: var(--danger); font-weight: 700; }
   .game-status .tap-hint { color: var(--primary-light); font-weight: 700; }
   .game-league { font-size: 0.64rem; font-weight: 800; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
@@ -248,6 +248,7 @@
       </div>
       <div class="game-status ${state === 'in' ? 'live' : ''}">
         <span>${esc(status.type.shortDetail || status.type.detail || '')}${odds ? ` · ${esc(odds)}` : ''}</span>
+        ${state !== 'post' ? sportsTvBadge(sportsTv(comp)) : ''}
         <span class="tap-hint">${state === 'pre' ? 'Preview ›' : 'Stats ›'}</span>
       </div>
     `;
@@ -416,7 +417,7 @@
         <div class="score">${state === 'pre' ? '<span class="dash">vs</span>' : `${esc(sportsScore(away.score))}<span class="dash">–</span>${esc(sportsScore(home.score))}`}</div>
         ${teamBlock(home)}
       </div>
-      <div class="status ${state === 'in' ? 'live' : ''}">${esc(status.type.detail || status.type.shortDetail || '')}</div>
+      <div class="status ${state === 'in' ? 'live' : ''}">${esc(status.type.detail || status.type.shortDetail || '')}${state !== 'post' && sportsTv(comp) ? ` · ${sportsTvBadge(sportsTv(comp))}` : ''}</div>
     `;
   }
 
@@ -733,6 +734,7 @@
           <button class="icon-btn" aria-label="Close">✕</button>
         </div>
         <div id="sheet-game"></div>
+        ${athlete.id ? `<a class="btn secondary block" style="margin-top:12px" href="players.html?sport=${encodeURIComponent(LEAGUES[current.league].sport)}&league=${encodeURIComponent(LEAGUES[current.league].league)}&id=${encodeURIComponent(athlete.id)}">Full player profile ›</a>` : ''}
         <div id="sheet-season"><h4>Season</h4><p class="helper-text">Loading season stats…</p></div>
       </div>`;
     document.body.appendChild(backdrop);

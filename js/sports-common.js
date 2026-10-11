@@ -78,6 +78,22 @@ function sportsSkeleton(count = 4, kind = 'game') {
   return Array(count).fill(one).join('');
 }
 
+// TV network(s) for a game, e.g. "CBS" or "ESPN/ABC" ('' if unknown)
+function sportsTv(comp) {
+  if (!comp) return '';
+  if (comp.broadcast) return String(comp.broadcast);
+  const names = [];
+  (comp.broadcasts || []).forEach((b) => {
+    (b.names || []).forEach((n) => { if (!names.includes(n)) names.push(n); });
+    if (b.media && b.media.shortName && !names.includes(b.media.shortName)) names.push(b.media.shortName);
+  });
+  if (!names.length) (comp.geoBroadcasts || []).forEach((b) => { if (b.media && b.media.shortName && !names.includes(b.media.shortName)) names.push(b.media.shortName); });
+  return names.slice(0, 2).join('/');
+}
+function sportsTvBadge(tv) {
+  return tv ? `<span class="tv-badge">${toolkitEscapeHtml(tv)}</span>` : '';
+}
+
 // ---------- Favorite teams (this device only) ----------
 const SPORTS_FAV_KEY = 'toolkit-fav-teams';
 
@@ -110,14 +126,17 @@ function sportsRenderNav(active) {
   const items = [
     ['scores', 'Scores', 'sports.html'],
     ['standings', 'Standings', 'standings.html'],
+    ['players', 'Players', 'players.html'],
     ['news', 'News', 'news.html'],
     ['highlights', 'Highlights', 'highlights.html'],
     ['pickem', "Pick'em", 'pickem.html'],
+    ['trivia', 'Trivia', 'trivia.html'],
     ['fantasy', 'Fantasy', 'fantasy.html'],
   ];
   const nav = document.createElement('nav');
   nav.className = 'sports-nav';
   nav.innerHTML = items.map(([k, label, href]) => `<a href="${href}" class="${k === active ? 'active' : ''}">${label}</a>`).join('');
+  setTimeout(() => { const on = nav.querySelector('.active'); if (on && on.offsetLeft > nav.clientWidth - 80) nav.scrollLeft = on.offsetLeft - 40; }, 0);
   return nav;
 }
 
@@ -260,6 +279,7 @@ function sportsOpenTeamPicker(onDone) {
   .star { background: none; border: 0; font-size: 1.3rem; color: var(--text-muted); cursor: pointer; padding: 2px 6px; }
   .star.on { color: var(--accent); }
   .fav-badge { color: var(--accent); font-size: 0.8rem; margin-right: 2px; }
+  .tv-badge { display: inline-block; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); vertical-align: 1px; white-space: nowrap; }
   `;
   const style = document.createElement('style');
   style.textContent = css;

@@ -61,6 +61,21 @@
   .mini-empty { flex: 1; font-size: 0.84rem; color: var(--text-muted); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-md); padding: 14px; text-align: center; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
+  /* fact + dates cards */
+  .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 14px; }
+  .info-card .hd { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .info-card .hd .ico { color: var(--accent); }
+  .info-card .hd .cat { margin-left: auto; letter-spacing: 0.04em; color: var(--ink-accent); }
+  .fact-text { font-size: 0.98rem; line-height: 1.45; font-weight: 500; }
+  .fact-more { margin-top: 10px; background: none; border: 0; padding: 0; color: var(--ink-accent); font-weight: 700; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .up-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); text-decoration: none; color: var(--text); }
+  .up-row:last-child { border-bottom: 0; }
+  .up-row .em { font-size: 1.15rem; width: 26px; text-align: center; }
+  .up-row .nm { flex: 1; font-weight: 700; font-size: 0.9rem; }
+  .up-row .nm small { display: block; font-weight: 500; font-size: 0.74rem; color: var(--text-muted); }
+  .up-row .when { font-size: 0.78rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .up-row .when.today { color: var(--success); }
+
   /* app grid */
   .section { margin-bottom: 24px; }
   .section .sec-title { margin: 0 2px 12px; display: block; }
@@ -108,6 +123,14 @@
     <div class="strip" id="team-strip"></div>
   </section>
 
+  <div id="upcoming"></div>
+
+  <section class="info-card" id="fact-card">
+    <div class="hd"><span data-icon="lightbulb" data-size="16"></span>Did you know?<span class="cat" id="fact-cat"></span></div>
+    <div class="fact-text" id="fact-text"></div>
+    <button class="fact-more" id="fact-more"><span data-icon="refresh-cw" data-size="14"></span>Another one</button>
+  </section>
+
   <div id="app-sections"></div>
   <div class="no-match hidden" id="no-match">No tools match that.</div>
 
@@ -117,12 +140,16 @@
 <script src="js/app.js"></script>
 <script src="js/icons.js"></script>
 <script src="js/sports-common.js"></script>
+<script src="js/facts.js"></script>
+<script src="js/pickem-config.js"></script>
+<script src="js/family.js"></script>
 <script>
   const esc = toolkitEscapeHtml;
 
   // ---------- the app grid ----------
   const COLORS = {
     sports:   ['#ff6a45', '#e0245e'],
+    family:   ['#ff79bd', '#d0367f'],
     kitchen:  ['#ffb52e', '#f2681f'],
     everyday: ['#4c95ff', '#2754d4'],
     money:    ['#36d399', '#0f9a7c'],
@@ -133,12 +160,18 @@
   };
   const SECTIONS = [
     { title: 'Sports', color: 'sports', apps: [
-      ['Scores', 'sports.html', 'goal', 'live games box scores stats nfl nba mlb college'],
+      ['Scores', 'sports.html', 'goal', 'live games box scores stats nfl nba mlb college tv channel'],
       ['Highlights', 'highlights.html', 'clapperboard', 'video clips'],
       ["Pick'em", 'pickem.html', 'target', 'picks family game'],
+      ['Trivia', 'trivia.html', 'brain', 'sports trivia quiz daily challenge'],
+      ['Players', 'players.html', 'user-search', 'player search stats game log'],
       ['Fantasy', 'fantasy.html', 'trophy', 'espn league'],
       ['Standings', 'standings.html', 'list-ordered', 'rankings ap top 25'],
       ['News', 'news.html', 'newspaper', 'headlines'],
+    ] },
+    { title: 'Family', color: 'family', apps: [
+      ['Family List', 'family-list.html', 'shopping-basket', 'shared grocery shopping list family'],
+      ['Birthdays', 'birthdays.html', 'cake', 'birthdays anniversaries dates family'],
     ] },
     { title: 'Kitchen & Shopping', color: 'kitchen', apps: [
       ['Pantry', 'pantry.html', 'package', 'scanner barcode food stock'],
@@ -151,7 +184,7 @@
       ['Tip', 'tip.html', 'hand-coins', 'tip split bill'],
       ['Translator', 'translate.html', 'languages', 'translate language spanish'],
       ['Calendar', 'calendar.html', 'calendar-days', 'perpetual day of week date'],
-      ['Age', 'age.html', 'cake', 'birthday age calculator'],
+      ['Age', 'age.html', 'calendar-heart', 'birthday age calculator'],
       ['Currency', 'currency.html', 'arrow-right-left', 'exchange money rates'],
       ['Sun & Moon', 'sky.html', 'sunrise', 'sunrise sunset moon phase'],
       ['Holidays', 'holidays.html', 'party-popper', 'public holidays'],
@@ -288,7 +321,7 @@
         const st = (comp.status || ev.status || {}).type || {};
         const away = cs.find((c) => c.homeAway === 'away') || cs[0];
         const home = cs.find((c) => c.homeAway === 'home') || cs[1];
-        cards.push({ lk, ev, st, away, home, color: mine.team.color ? '#' + mine.team.color : '', order: st.state === 'in' ? 0 : st.state === 'pre' ? 1 : 2 });
+        cards.push({ lk, ev, st, away, home, tv: sportsTv(comp), color: mine.team.color ? '#' + mine.team.color : '', order: st.state === 'in' ? 0 : st.state === 'pre' ? 1 : 2 });
       });
     });
     cards.sort((a, b) => a.order - b.order);
@@ -305,11 +338,49 @@
         <a class="mini-game" style="${c.color ? `--tc:${esc(c.color)}` : ''}" href="pages/sports.html?league=${c.lk}&game=${encodeURIComponent(c.ev.id)}&title=${encodeURIComponent(title)}">
           <div class="lg"><span>${SPORTS_LEAGUES[c.lk].label}</span>${c.st.state === 'in' ? '<span class="live">LIVE</span>' : ''}</div>
           ${row(c.away, as, hs)}${row(c.home, hs, as)}
-          <div class="st">${esc(c.st.shortDetail || '')}</div>
+          <div class="st">${esc(c.st.shortDetail || '')}${c.tv && c.st.state !== 'post' ? ` · ${esc(c.tv)}` : ''}</div>
         </a>`;
     }).join('');
   }
   loadTeamStrip();
+
+  // ---------- fact of the day ----------
+  let factIdx = toolkitFactOfDay().index;
+  function showFact(i, label) {
+    const [cat, text] = TOOLKIT_FACTS[i];
+    document.getElementById('fact-text').textContent = text;
+    document.getElementById('fact-cat').textContent = cat;
+  }
+  showFact(factIdx);
+  document.getElementById('fact-more').addEventListener('click', () => {
+    let n = factIdx;
+    while (n === factIdx && TOOLKIT_FACTS.length > 1) n = Math.floor(Math.random() * TOOLKIT_FACTS.length);
+    factIdx = n;
+    showFact(n);
+  });
+
+  // ---------- birthdays & anniversaries in the next 2 weeks ----------
+  function renderUpcoming(dates) {
+    const host = document.getElementById('upcoming');
+    const soon = (dates || []).map((d) => ({ d, n: familyNextOccurrence(d) })).filter((x) => x.n.days <= 14).sort((a, b) => a.n.days - b.n.days).slice(0, 4);
+    if (!soon.length) { host.innerHTML = ''; return; }
+    const emoji = { birthday: '🎂', anniversary: '💍', other: '⭐' };
+    host.innerHTML = `
+      <section class="info-card">
+        <div class="hd"><span data-icon="gift" data-size="16"></span>Coming up</div>
+        ${soon.map(({ d, n }) => `
+          <a class="up-row" href="pages/birthdays.html">
+            <span class="em">${emoji[d.kind] || '⭐'}</span>
+            <span class="nm">${esc(d.name)}<small>${esc(familyDateBlurb(d, n))}</small></span>
+            <span class="when ${n.days === 0 ? 'today' : ''}">${esc(familyDaysLabel(n.days))}</span>
+          </a>`).join('')}
+      </section>`;
+    toolkitHydrateIcons(host);
+  }
+  renderUpcoming(familyCachedDates());
+  if (familySession() && familyRelay()) {
+    familyApi('datesGet').then((r) => { familyCacheDates(r.dates); renderUpcoming(r.dates); }).catch(() => {});
+  }
 
   toolkitHydrateIcons();
 </script>

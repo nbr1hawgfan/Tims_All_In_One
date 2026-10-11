@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Birthdays — Personal Toolkit</title>
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
+<style>
+  .filters { display: flex; gap: 6px; margin-bottom: 14px; }
+  .filters button { flex: 1; padding: 8px 6px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+  .filters button.on { background: var(--primary); color: #fff; border-color: transparent; }
+  .next-up { position: relative; overflow: hidden; border-radius: var(--radius-lg); padding: 18px; margin-bottom: 18px; color: #fff; background: linear-gradient(140deg, #ff79bd, #8a4dff); box-shadow: var(--shadow-md); }
+  .next-up.anniv { background: linear-gradient(140deg, #ff6a6a, #c2185b); }
+  .next-up .lbl { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85; }
+  .next-up .nm { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; }
+  .next-up .sub { font-size: 0.9rem; opacity: 0.92; margin-top: 2px; }
+  .next-up .big { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); text-align: center; }
+  .next-up .big .n { font-family: var(--font-display); font-size: 2.6rem; font-weight: 800; line-height: 1; }
+  .next-up .big .u { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+  .month-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin: 18px 2px 8px; }
+  .dt { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+  .dt .cal { width: 46px; flex-shrink: 0; text-align: center; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); }
+  .dt .cal .m { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; background: var(--kind, var(--primary)); color: #fff; padding: 2px 0; text-transform: uppercase; }
+  .dt .cal .d { font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; padding: 3px 0 4px; }
+  .dt .mid { flex: 1; min-width: 0; }
+  .dt .mid div:first-child { font-weight: 700; font-size: 0.95rem; }
+  .dt .mid div:last-child { font-size: 0.76rem; color: var(--text-muted); margin-top: 1px; }
+  .dt .when { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+  .dt .when.soon { color: var(--accent); }
+  .dt .when.today { color: var(--success); }
+  .kind-birthday { --kind: #d94ba0; } .kind-anniversary { --kind: #e0454f; } .kind-other { --kind: #4c7dff; }
+  .fab { position: fixed; right: 18px; bottom: calc(22px + env(safe-area-inset-bottom)); width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--primary); color: #fff; box-shadow: var(--shadow-lg); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; }
+  .fab:active { transform: scale(0.94); }
+  .sheet-backdrop { position: fixed; inset: 0; background: rgba(5, 10, 20, 0.55); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+  .sheet { background: var(--bg); width: 100%; max-width: var(--max-w); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 18px 16px calc(22px + env(safe-area-inset-bottom)); box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; }
+  .kind-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 14px; }
+  .kind-pick button { padding: 10px 4px; border-radius: var(--radius-sm); border: 2px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+  .kind-pick button.on { border-color: var(--primary-light); background: var(--primary-wash); }
+  .date-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; }
+  .sheet-actions { display: flex; gap: 8px; }
+  .sheet-actions .btn { flex: 1; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Birthdays &amp; Anniversaries</h1></div>
+</header>
+
+<main class="shell" style="padding-bottom:96px">
+  <div id="gate"></div>
+  <section id="app" class="hidden">
+    <div id="next"></div>
+    <div class="filters" id="filters">
+      <button data-f="all" class="on">All</button>
+      <button data-f="birthday">Birthdays</button>
+      <button data-f="anniversary">Anniversaries</button>
+    </div>
+    <div id="list"></div>
+    <p class="helper-text" style="margin-top:14px">Shared with the whole family. Tap one to edit. The next 2 weeks also show on the home screen.</p>
+  </section>
+</main>
+
+<button class="fab hidden" id="fab" aria-label="Add a date"></button>
+
+<script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
+<script src="../js/pickem-config.js"></script>
+<script src="../js/family.js"></script>
+<script>
+  const esc = toolkitEscapeHtml;
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  let dates = familyCachedDates();
+  let filter = 'all';
+
+  document.getElementById('fab').innerHTML = toolkitIcon('plus', 28, 2.5);
+  document.getElementById('fab').addEventListener('click', () => openEditor(null));
+  document.querySelectorAll('#filters button').forEach((b) => b.addEventListener('click', () => {
+    filter = b.dataset.f;
+    document.querySelectorAll('#filters button').forEach((x) => x.classList.toggle('on', x === b));
+    render();
+  }));
+
+  function render() {
+    const withNext = dates.map((d) => ({ d, n: familyNextOccurrence(d) })).sort((a, b) => a.n.days - b.n.days);
+    const nextEl = document.getElementById('next');
+    const first = withNext[0];
+    if (first) {
+      const isToday = first.n.days === 0;
+      nextEl.innerHTML = `
+        <div class="next-up ${first.d.kind === 'anniversary' ? 'anniv' : ''}">
+          <div class="lbl">${isToday ? 'Today' : 'Coming up next'}</div>
+          <div class="nm">${esc(first.d.name)}</div>
+          <div class="sub">${esc(familyDateBlurb(first.d, first.n))} · ${esc(MONTHS[first.d.month - 1])} ${first.d.day}</div>
+          <div class="big">${isToday ? `<div class="n">🎉</div>` : `<div class="n">${first.n.days}</div><div class="u">${first.n.days === 1 ? 'day' : 'days'}</div>`}</div>
+        </div>`;
+    } else nextEl.innerHTML = '';
+
+    const shown = withNext.filter((x) => filter === 'all' || x.d.kind === filter);
+    const host = document.getElementById('list');
+    if (!dates.length) {
+      host.innerHTML = `<div class="empty-state"><div class="empty-icon">🎂</div><p>No dates yet.</p><p>Tap + to add a birthday or anniversary.</p></div>`;
+      return;
+    }
+    if (!shown.length) { host.innerHTML = `<div class="empty-state"><p>Nothing here yet.</p></div>`; return; }
+    let lastMonth = '';
+    host.innerHTML = shown.map(({ d, n }) => {
+      const label = n.when.toLocaleDateString(undefined, { month: 'long', year: n.when.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+      const head = label !== lastMonth ? `<div class="month-label">${esc(label)}</div>` : '';
+      lastMonth = label;
+      const blurb = familyDateBlurb(d, n);
+      return `${head}
+        <div class="dt kind-${esc(d.kind)}" data-id="${esc(d.id)}">
+          <div class="cal"><div class="m">${esc(MONTHS[d.month - 1].slice(0, 3))}</div><div class="d">${d.day}</div></div>
+          <div class="mid"><div>${esc(d.name)}</div><div>${esc([blurb, n.when.toLocaleDateString(undefined, { weekday: 'long' })].filter(Boolean).join(' · '))}</div></div>
+          <div class="when ${n.days === 0 ? 'today' : n.days <= 7 ? 'soon' : ''}">${esc(familyDaysLabel(n.days))}</div>
+        </div>`;
+    }).join('');
+    host.querySelectorAll('.dt').forEach((el) => el.addEventListener('click', () => openEditor(dates.find((x) => x.id === el.dataset.id))));
+  }
+
+  function openEditor(d) {
+    const kindNow = d ? d.kind : 'birthday';
+    const bd = document.createElement('div');
+    bd.className = 'sheet-backdrop';
+    bd.innerHTML = `
+      <div class="sheet" role="dialog" aria-label="${d ? 'Edit date' : 'Add date'}">
+        <h3 style="margin-bottom:12px">${d ? 'Edit' : 'Add a date'}</h3>
+        <div class="kind-pick">
+          <button data-k="birthday">🎂 Birthday</button>
+          <button data-k="anniversary">💍 Anniversary</button>
+          <button data-k="other">⭐ Other</button>
+        </div>
+        <label for="e-name">Name</label>
+        <input type="text" id="e-name" maxlength="40" placeholder="e.g. Grandma, Mike & Sarah" value="${d ? esc(d.name) : ''}">
+        <div class="date-row">
+          <div><label for="e-month">Month</label><select id="e-month">${MONTHS.map((m, i) => `<option value="${i + 1}" ${d && d.month === i + 1 ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+          <div><label for="e-day">Day</label><input type="number" id="e-day" inputmode="numeric" min="1" max="31" value="${d ? d.day : ''}"></div>
+          <div><label for="e-year">Year</label><input type="number" id="e-year" inputmode="numeric" placeholder="Optional" value="${d && d.year ? d.year : ''}"></div>
+        </div>
+        <p class="helper-text">Add the year to show ages (“Turns 40”) or which anniversary it is.</p>
+        <div class="sheet-actions">
+          ${d ? `<button class="btn danger" id="e-del" style="flex:0 0 auto">${toolkitIcon('trash-2', 18)}</button>` : ''}
+          <button class="btn secondary" id="e-cancel">Cancel</button>
+          <button class="btn" id="e-save">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(bd);
+    let kind = kindNow;
+    const setKind = () => bd.querySelectorAll('.kind-pick button').forEach((b) => b.classList.toggle('on', b.dataset.k === kind));
+    setKind();
+    bd.querySelectorAll('.kind-pick button').forEach((b) => b.addEventListener('click', () => { kind = b.dataset.k; setKind(); }));
+    if (!d) bd.querySelector('#e-month').value = String(new Date().getMonth() + 1);
+    const close = () => bd.remove();
+    bd.addEventListener('click', (e) => { if (e.target === bd) close(); });
+    bd.querySelector('#e-cancel').addEventListener('click', close);
+    bd.querySelector('#e-save').addEventListener('click', async () => {
+      const btn = bd.querySelector('#e-save');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const r = await familyApi('datesSave', {
+          id: d ? d.id : undefined, label: bd.querySelector('#e-name').value, kind,
+          month: bd.querySelector('#e-month').value, day: bd.querySelector('#e-day').value, year: bd.querySelector('#e-year').value,
+        });
+        dates = r.dates; familyCacheDates(dates); render(); close();
+        toolkitToast('Saved');
+      } catch (e) {
+        if (familyIsAuthError(e.message)) { close(); return start(); }
+        toolkitToast(e.message, { danger: true });
+        btn.disabled = false; btn.textContent = 'Save';
+      }
+    });
+    const del = bd.querySelector('#e-del');
+    if (del) del.addEventListener('click', async () => {
+      if (!confirm(`Remove ${d.name}?`)) return;
+      try {
+        const r = await familyApi('datesDelete', { id: d.id });
+        dates = r.dates; familyCacheDates(dates); render(); close();
+      } catch (e) { toolkitToast(e.message, { danger: true }); }
+    });
+    setTimeout(() => { if (!d) bd.querySelector('#e-name').focus(); }, 50);
+  }
+
+  async function refresh() {
+    try {
+      const r = await familyApi('datesGet');
+      dates = r.dates; familyCacheDates(dates); render();
+    } catch (e) {
+      if (familyIsAuthError(e.message)) return start();
+      toolkitToast('Showing the last saved dates — couldn’t reach the server', { danger: true });
+    }
+  }
+
+  function start() {
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('fab').classList.add('hidden');
+    familyGate(document.getElementById('gate'), () => {
+      document.getElementById('gate').innerHTML = '';
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('fab').classList.remove('hidden');
+      render();
+      refresh();
+    }, { title: 'Sign in to see family dates', blurb: 'Birthdays and anniversaries are shared with your Pick\'em group. Use the same group code, name and PIN.' });
+  }
+  start();
+</script>
+</body>
+</html>

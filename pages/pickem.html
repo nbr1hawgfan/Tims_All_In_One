@@ -318,7 +318,7 @@
       }
       html += `
         <div class="pk-game">
-          <div class="gmeta"><span>${g.league === 'ncaaf' ? 'College' : 'NFL'}</span><span>${status}</span></div>
+          <div class="gmeta"><span>${g.league === 'ncaaf' ? 'College' : 'NFL'}${g.tv && g.state !== 'post' ? ` · ${esc(g.tv)}` : ''}</span><span>${status}</span></div>
           <div class="pk-sides">${sideBtn('away')}<div class="at">@</div>${sideBtn('home')}</div>
           ${who}
         </div>`;

@@ -1,8 +1,11 @@
 /**
- * Family Pick'em — backend for the All-In-One app's pickem.html.
+ * Family Hub — backend for the All-In-One app's shared family features:
+ * Pick'em, the Family grocery list, Birthdays & Anniversaries, and Daily Trivia.
  *
  * Lives in a Google Sheet (Extensions → Apps Script). The Sheet is the
- * database: Players, Picks and Games tabs are created automatically.
+ * database: Players, Picks, Games, List, Dates, Trivia and TriviaScores tabs
+ * are created automatically. Everyone signs in once with the group code,
+ * their name and a 4-digit PIN — the same sign-in works for every feature.
  *
  * Script Properties (Project Settings → Script Properties):
  *   GROUP_CODE     required — the invite code people type to join (e.g. JENNINGS26)
@@ -26,6 +29,10 @@ const SHEETS = {
   Players: ['key', 'name', 'salt', 'hash', 'joined'],
   Picks:   ['weekKey', 'gameId', 'playerKey', 'pick', 'updated'],
   Games:   ['weekKey', 'gameId', 'json', 'updated'],
+  List:    ['id', 'text', 'done', 'addedBy', 'added', 'doneBy', 'updated'],
+  Dates:   ['id', 'name', 'kind', 'month', 'day', 'year', 'addedBy', 'added'],
+  Trivia:  ['dateKey', 'json', 'created'],
+  TriviaScores: ['dateKey', 'playerKey', 'score', 'total', 'answers', 'submitted'],
 };
 
 // ============================================================
@@ -55,7 +62,9 @@ function handle_(req) {
   if (action === 'week') return week_(req, player);
   if (action === 'save') return save_(req, player);
   if (action === 'leaderboard') return leaderboard_(req, player);
-  throw new Error('Unknown action.');
+  if (action === 'me') return { ok: true, player: player.name, group: groupName_() };
+  if (FAMILY_ACTIONS[action]) return FAMILY_ACTIONS[action](req, player);
+  throw new Error('Unknown action. (If you just updated the app, the Apps Script may need a new deployment version.)');
 }
 
 function out_(obj) {
@@ -266,7 +275,18 @@ function trimGame_(ev, league) {
       winner = hs > as ? 'home' : (as > hs ? 'away' : 'tie');
     }
   }
-  return { id: String(ev.id), league: league, kickoff: ev.date, state: st.state || 'pre', detail: st.shortDetail || '', home: side(home), away: side(away), winner: winner };
+  return { id: String(ev.id), league: league, kickoff: ev.date, state: st.state || 'pre', detail: st.shortDetail || '', tv: tvOf_(comp), home: side(home), away: side(away), winner: winner };
+}
+
+// TV network(s) for a game, e.g. "CBS" or "ESPN/ABC"
+function tvOf_(comp) {
+  if (comp.broadcast) return String(comp.broadcast);
+  const names = [];
+  (comp.broadcasts || []).forEach(function (b) {
+    (b.names || []).forEach(function (n) { if (names.indexOf(n) < 0) names.push(n); });
+    if (b.media && b.media.shortName && names.indexOf(b.media.shortName) < 0) names.push(b.media.shortName);
+  });
+  return names.slice(0, 2).join('/');
 }
 
 function ymd_(d) { return Utilities.formatDate(d, 'America/New_York', 'yyyyMMdd'); }
@@ -491,8 +511,242 @@ function leaderboard_(req, player) {
 /** Run once from the editor to check setup before deploying (approve permissions when asked). */
 function testSetup() {
   Object.keys(SHEETS).forEach(sheet_);
+  try { Logger.log('Trivia: today\'s ' + todaysQuestions_().questions.length + ' questions are ready.'); }
+  catch (err) { Logger.log('Trivia check: ' + err.message); }
   const code = props_().getProperty('GROUP_CODE');
   Logger.log(code ? 'GROUP_CODE is set: ' + code : 'Add GROUP_CODE in Project Settings → Script Properties.');
   const info = getWeek_();
   Logger.log(info.label + ' — ' + info.games.length + ' games (' + info.games.filter(function (g) { return g.league === 'ncaaf'; }).length + ' college)');
+}
+
+// ============================================================
+// FAMILY FEATURES — shared grocery list, birthdays, daily trivia
+// ============================================================
+const FAMILY_ACTIONS = {
+  listGet: function (req, player) { return listOut_(); },
+  listAdd: listAdd_,
+  listToggle: listToggle_,
+  listDelete: listDelete_,
+  listClearDone: listClearDone_,
+  datesGet: function (req, player) { return datesOut_(); },
+  datesSave: datesSave_,
+  datesDelete: datesDelete_,
+  triviaToday: triviaToday_,
+  triviaSubmit: triviaSubmit_,
+  triviaBoard: triviaBoard_,
+  triviaPractice: triviaPractice_,
+};
+
+function newId_() { return Utilities.getUuid().replace(/-/g, '').slice(0, 10); }
+function nowIso_() { return new Date().toISOString(); }
+function todayKey_() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'); }
+function clean_(s, max) { return String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max || 80); }
+
+function withLock_(fn) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+
+// Row number (2-based) of the row whose first column equals id
+function findRow_(sheetName, id) {
+  const rows = rows_(sheetName);
+  for (let i = 0; i < rows.length; i++) if (String(rows[i][0]) === String(id)) return { row: i + 2, values: rows[i] };
+  return null;
+}
+
+// ---------- Family grocery list ----------
+function listOut_() {
+  const items = rows_('List').filter(function (r) { return r[0]; }).map(function (r) {
+    return { id: String(r[0]), text: String(r[1]), done: String(r[2]) === '1', addedBy: String(r[3]), added: String(r[4]), doneBy: String(r[5]), updated: String(r[6]) };
+  });
+  items.sort(function (a, b) { return (a.done === b.done ? 0 : a.done ? 1 : -1) || (a.added < b.added ? -1 : a.added > b.added ? 1 : 0); });
+  return { ok: true, items: items };
+}
+
+function listAdd_(req, player) {
+  let texts = Array.isArray(req.texts) ? req.texts : [req.text];
+  texts = texts.map(function (t) { return clean_(t, 80); }).filter(Boolean).slice(0, 30);
+  if (!texts.length) throw new Error('Type an item first.');
+  return withLock_(function () {
+    const existing = rows_('List').filter(function (r) { return r[0] && String(r[2]) !== '1'; }).map(function (r) { return String(r[1]).toLowerCase(); });
+    const now = nowIso_();
+    const add = texts.filter(function (t) { return existing.indexOf(t.toLowerCase()) < 0; })
+      .map(function (t) { return [newId_(), t, '', player.name, now, '', now]; });
+    if (add.length) {
+      const sh = sheet_('List');
+      sh.getRange(sh.getLastRow() + 1, 1, add.length, 7).setNumberFormat('@').setValues(add);
+    }
+    const out = listOut_();
+    out.skipped = texts.length - add.length;
+    return out;
+  });
+}
+
+function listToggle_(req, player) {
+  return withLock_(function () {
+    const hit = findRow_('List', req.id);
+    if (!hit) return listOut_(); // someone else already removed it
+    const done = req.done ? '1' : '';
+    sheet_('List').getRange(hit.row, 3, 1, 5).setValues([[done, hit.values[3], hit.values[4], done ? player.name : '', nowIso_()]]);
+    return listOut_();
+  });
+}
+
+function listDelete_(req, player) {
+  return withLock_(function () {
+    const hit = findRow_('List', req.id);
+    if (hit) sheet_('List').deleteRow(hit.row);
+    return listOut_();
+  });
+}
+
+function listClearDone_(req, player) {
+  return withLock_(function () {
+    const sh = sheet_('List');
+    const rows = rows_('List');
+    for (let i = rows.length - 1; i >= 0; i--) if (String(rows[i][2]) === '1') sh.deleteRow(i + 2);
+    return listOut_();
+  });
+}
+
+// ---------- Birthdays & anniversaries ----------
+const DATE_KINDS = ['birthday', 'anniversary', 'other'];
+
+function datesOut_() {
+  const dates = rows_('Dates').filter(function (r) { return r[0]; }).map(function (r) {
+    return { id: String(r[0]), name: String(r[1]), kind: String(r[2]) || 'birthday', month: parseInt(r[3], 10), day: parseInt(r[4], 10), year: r[5] ? parseInt(r[5], 10) : null, addedBy: String(r[6]) };
+  });
+  return { ok: true, dates: dates };
+}
+
+function datesSave_(req, player) {
+  // 'label' (not 'name') — 'name' is the signed-in person
+  const name = clean_(req.label, 40);
+  const kind = DATE_KINDS.indexOf(req.kind) >= 0 ? req.kind : 'birthday';
+  const month = parseInt(req.month, 10), day = parseInt(req.day, 10);
+  const year = req.year ? parseInt(req.year, 10) : '';
+  if (!name) throw new Error('Add a name.');
+  if (!(month >= 1 && month <= 12)) throw new Error('Pick a month.');
+  const maxDay = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  if (!(day >= 1 && day <= maxDay)) throw new Error('That day doesn\'t exist in that month.');
+  const thisYear = new Date().getFullYear();
+  if (year && (year < 1900 || year > thisYear)) throw new Error('Year should be between 1900 and ' + thisYear + ' (or leave it blank).');
+  return withLock_(function () {
+    const sh = sheet_('Dates');
+    const row = [name, kind, String(month), String(day), year ? String(year) : ''];
+    const hit = req.id ? findRow_('Dates', req.id) : null;
+    if (hit) sh.getRange(hit.row, 2, 1, 5).setValues([row]);
+    else sh.getRange(sh.getLastRow() + 1, 1, 1, 8).setNumberFormat('@').setValues([[newId_()].concat(row, [player.name, nowIso_()])]);
+    return datesOut_();
+  });
+}
+
+function datesDelete_(req, player) {
+  return withLock_(function () {
+    const hit = findRow_('Dates', req.id);
+    if (hit) sheet_('Dates').deleteRow(hit.row);
+    return datesOut_();
+  });
+}
+
+// ---------- Daily trivia (Open Trivia DB, sports category) ----------
+// Same 10 questions for the whole family each day; first try counts.
+const TRIVIA_URL = 'https://opentdb.com/api.php?amount=10&category=21&type=multiple&encode=url3986';
+
+function fetchTrivia_(amount) {
+  const url = TRIVIA_URL.replace('amount=10', 'amount=' + (amount || 10));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+      if (res.getResponseCode() === 200) {
+        const data = JSON.parse(res.getContentText());
+        if (data.response_code === 0 && data.results && data.results.length) {
+          return data.results.map(function (q) {
+            const correct = decodeURIComponent(q.correct_answer);
+            const options = q.incorrect_answers.map(decodeURIComponent).concat([correct]);
+            for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = options[i]; options[i] = options[j]; options[j] = t; }
+            return { q: decodeURIComponent(q.question), options: options, answer: options.indexOf(correct), difficulty: q.difficulty };
+          });
+        }
+      }
+    } catch (err) { /* retry */ }
+    Utilities.sleep(5200); // Open Trivia DB allows one request every 5 seconds
+  }
+  throw new Error('The trivia question service isn\'t answering — try again in a minute.');
+}
+
+function todaysQuestions_() {
+  const key = todayKey_();
+  const hit = findRow_('Trivia', key);
+  if (hit) return { key: key, questions: JSON.parse(hit.values[1]) };
+  return withLock_(function () {
+    const again = findRow_('Trivia', key); // someone may have just created it
+    if (again) return { key: key, questions: JSON.parse(again.values[1]) };
+    const questions = fetchTrivia_(10);
+    const sh = sheet_('Trivia');
+    sh.getRange(sh.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[key, JSON.stringify(questions), nowIso_()]]);
+    return { key: key, questions: questions };
+  });
+}
+
+function myTriviaRow_(key, playerKey) {
+  const rows = rows_('TriviaScores');
+  for (let i = 0; i < rows.length; i++) if (String(rows[i][0]) === key && String(rows[i][1]) === playerKey) return rows[i];
+  return null;
+}
+
+function triviaToday_(req, player) {
+  const t = todaysQuestions_();
+  const mine = myTriviaRow_(t.key, player.key);
+  const qs = t.questions.map(function (q) { return { q: q.q, options: q.options, difficulty: q.difficulty }; });
+  const out = { ok: true, dateKey: t.key, questions: qs, played: !!mine };
+  if (mine) {
+    out.result = { score: parseInt(mine[2], 10), total: parseInt(mine[3], 10), answers: JSON.parse(mine[4] || '[]'), correct: t.questions.map(function (q) { return q.answer; }) };
+  }
+  return out;
+}
+
+function triviaSubmit_(req, player) {
+  const t = todaysQuestions_();
+  if (req.dateKey && req.dateKey !== t.key) throw new Error('That was yesterday\'s quiz — a new one is up now.');
+  const answers = (Array.isArray(req.answers) ? req.answers : []).slice(0, t.questions.length).map(function (a) { const n = parseInt(a, 10); return isNaN(n) ? -1 : n; });
+  const correct = t.questions.map(function (q) { return q.answer; });
+  let score = 0;
+  correct.forEach(function (c, i) { if (answers[i] === c) score++; });
+  return withLock_(function () {
+    const prev = myTriviaRow_(t.key, player.key);
+    if (prev) {
+      return { ok: true, already: true, score: parseInt(prev[2], 10), total: parseInt(prev[3], 10), answers: JSON.parse(prev[4] || '[]'), correct: correct };
+    }
+    const sh = sheet_('TriviaScores');
+    sh.getRange(sh.getLastRow() + 1, 1, 1, 6).setNumberFormat('@').setValues([[t.key, player.key, String(score), String(correct.length), JSON.stringify(answers), nowIso_()]]);
+    return { ok: true, score: score, total: correct.length, answers: answers, correct: correct };
+  });
+}
+
+function triviaBoard_(req, player) {
+  const nameOf = {};
+  rows_('Players').forEach(function (r) { nameOf[String(r[0])] = String(r[1]); });
+  const today = todayKey_();
+  const weekAgo = Utilities.formatDate(new Date(Date.now() - 6 * 86400000), TZ, 'yyyy-MM-dd');
+  const todayRows = [], week = {}, all = {};
+  rows_('TriviaScores').forEach(function (r) {
+    const key = String(r[0]), pk = String(r[1]), score = parseInt(r[2], 10) || 0, total = parseInt(r[3], 10) || 0;
+    const name = nameOf[pk] || pk;
+    if (key === today) todayRows.push({ name: name, score: score, total: total, submitted: String(r[5]) });
+    const add = function (bucket) {
+      bucket[pk] = bucket[pk] || { name: name, score: 0, total: 0, played: 0 };
+      bucket[pk].score += score; bucket[pk].total += total; bucket[pk].played++;
+    };
+    if (key >= weekAgo) add(week);
+    add(all);
+  });
+  todayRows.sort(function (a, b) { return b.score - a.score || (a.submitted < b.submitted ? -1 : 1); });
+  const sortB = function (bucket) { return Object.keys(bucket).map(function (k) { return bucket[k]; }).sort(function (a, b) { return b.score - a.score || b.played - a.played; }); };
+  return { ok: true, today: todayRows, week: sortB(week), all: sortB(all), dateKey: today };
+}
+
+function triviaPractice_(req, player) {
+  return { ok: true, questions: fetchTrivia_(10) };
 }

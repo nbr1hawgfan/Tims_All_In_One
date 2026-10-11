@@ -23,6 +23,9 @@
     font-size: 0.85rem; color: #fff;
   }
   .check-circle.checked { background: var(--success); border-color: var(--success); }
+  .list-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); margin-bottom: 16px; }
+  .list-switch a { text-align: center; padding: 9px; border-radius: 999px; text-decoration: none; color: var(--text-muted); font-weight: 700; font-size: 0.86rem; }
+  .list-switch a.on { background: var(--primary); color: #fff; }
   .export-row { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
   .export-row button { flex: 1; min-width: 90px; }
 
@@ -49,6 +52,10 @@
 </header>
 
 <main class="shell">
+  <div class="list-switch">
+    <a href="shopping-list.html" class="on">My List</a>
+    <a href="family-list.html">Family List</a>
+  </div>
   <div class="add-row">
     <input type="text" id="new-item" placeholder="Add an item…">
     <button class="btn" id="add-btn">Add</button>

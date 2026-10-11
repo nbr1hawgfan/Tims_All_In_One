@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Family List — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
+<style>
+  .list-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); margin-bottom: 16px; }
+  .list-switch a { text-align: center; padding: 9px; border-radius: 999px; text-decoration: none; color: var(--text-muted); font-weight: 700; font-size: 0.86rem; }
+  .list-switch a.on { background: var(--primary); color: #fff; }
+  .add-row { display: flex; gap: 8px; margin-bottom: 6px; }
+  .add-row input { margin-bottom: 0; }
+  .add-row .btn { flex-shrink: 0; }
+  .meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: var(--text-muted); margin: 8px 2px 12px; }
+  .meta-row .sync { display: inline-flex; align-items: center; gap: 6px; }
+  .meta-row .sync::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+  .meta-row .sync.off::before { background: var(--text-muted); }
+  .fl-item { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 12px; margin-bottom: 8px; transition: opacity 0.2s ease; }
+  .fl-item .ck { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); background: none; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; padding: 0; }
+  .fl-item.done .ck { background: var(--success); border-color: var(--success); }
+  .fl-item .tx { flex: 1; min-width: 0; cursor: pointer; }
+  .fl-item .tx div:first-child { font-weight: 600; font-size: 0.95rem; overflow-wrap: anywhere; }
+  .fl-item .tx div:last-child { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+  .fl-item.done { opacity: 0.55; }
+  .fl-item.done .tx div:first-child { text-decoration: line-through; }
+  .fl-item .del { background: none; border: 0; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: 8px; }
+  .fl-item .del:hover { color: var(--danger); background: var(--danger-wash); }
+  .done-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 16px 2px 8px; }
+  .tools { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .tools .btn { flex: 1; min-width: 120px; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Shopping List</h1></div>
+</header>
+
+<main class="shell">
+  <div class="list-switch">
+    <a href="shopping-list.html">My List</a>
+    <a href="family-list.html" class="on">Family List</a>
+  </div>
+  <div id="gate"></div>
+  <section id="app" class="hidden">
+    <div class="add-row">
+      <input type="text" id="new-item" placeholder="Add to the family list…" enterkeyhint="done" autocomplete="off">
+      <button class="btn" id="add-btn" aria-label="Add">Add</button>
+    </div>
+    <div class="meta-row"><span class="sync" id="sync">Shared with everyone in the family</span><span id="who"></span></div>
+    <div id="list"></div>
+    <div class="tools">
+      <button class="btn secondary" id="share-btn">Share as text</button>
+      <button class="btn secondary" id="clear-btn">Clear checked</button>
+    </div>
+    <p class="helper-text" style="margin-top:14px">Tip: add several at once by separating them with commas — “milk, eggs, bread”. Changes show up on everyone’s phone within a few seconds.</p>
+  </section>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
+<script src="../js/pickem-config.js"></script>
+<script src="../js/family.js"></script>
+<script>
+  const esc = toolkitEscapeHtml;
+  const CACHE_KEY = 'toolkit-family-list-cache';
+  let items = [];
+  let busy = 0;
+  let pollTimer = null;
+  let session = null;
+
+  try { items = JSON.parse(localStorage.getItem(CACHE_KEY)) || []; } catch (e) {}
+
+  function saveCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify(items)); } catch (e) {} }
+
+  function ago(iso) {
+    const t = new Date(iso).getTime();
+    if (!t) return '';
+    const m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + 'm ago';
+    const h = Math.round(m / 60);
+    if (h < 24) return h + 'h ago';
+    return Math.round(h / 24) + 'd ago';
+  }
+
+  function render() {
+    const host = document.getElementById('list');
+    const open = items.filter((i) => !i.done), done = items.filter((i) => i.done);
+    const row = (i) => `
+      <div class="fl-item ${i.done ? 'done' : ''}" data-id="${esc(i.id)}">
+        <button class="ck" aria-label="${i.done ? 'Uncheck' : 'Check off'}">${i.done ? toolkitIcon('check', 16, 3) : ''}</button>
+        <div class="tx"><div>${esc(i.text)}</div><div>${i.done ? `Got it · ${esc(i.doneBy || '')}` : `${esc(i.addedBy)} · ${esc(ago(i.added))}`}</div></div>
+        <button class="del" aria-label="Remove">${toolkitIcon('x', 18, 2)}</button>
+      </div>`;
+    host.innerHTML = !items.length
+      ? `<div class="empty-state"><div class="empty-icon"><span data-icon="shopping-cart"></span></div><p>The family list is empty.</p><p>Add something above — everyone will see it.</p></div>`
+      : open.map(row).join('') + (done.length ? `<div class="done-label">In the cart (${done.length})</div>` + done.map(row).join('') : '');
+    host.querySelectorAll('.fl-item').forEach((el) => {
+      const id = el.dataset.id;
+      const toggle = () => act('listToggle', { id, done: !items.find((x) => x.id === id).done }, () => {
+        const it = items.find((x) => x.id === id);
+        it.done = !it.done; it.doneBy = it.done ? session.name : '';
+      });
+      el.querySelector('.ck').addEventListener('click', toggle);
+      el.querySelector('.tx').addEventListener('click', toggle);
+      el.querySelector('.del').addEventListener('click', () => act('listDelete', { id }, () => { items = items.filter((x) => x.id !== id); }));
+    });
+    document.getElementById('clear-btn').disabled = !done.length;
+  }
+
+  // Update the screen right away, then confirm with the server
+  async function act(action, extra, optimistic) {
+    if (optimistic) { optimistic(); render(); }
+    busy++;
+    try {
+      const r = await familyApi(action, extra);
+      items = r.items; saveCache();
+      if (r.skipped) toolkitToast(`${r.skipped} already on the list`);
+      setSync(true);
+    } catch (e) {
+      if (familyIsAuthError(e.message)) return start();
+      toolkitToast(e.message, { danger: true });
+      setSync(false);
+    } finally {
+      busy--;
+      render();
+    }
+  }
+
+  function setSync(ok) {
+    const el = document.getElementById('sync');
+    el.classList.toggle('off', !ok);
+    el.textContent = ok ? 'Shared with everyone in the family' : 'Offline — showing last saved list';
+  }
+
+  async function refresh() {
+    if (busy || document.visibilityState === 'hidden') return;
+    try {
+      const r = await familyApi('listGet');
+      if (busy) return;
+      items = r.items; saveCache(); setSync(true); render();
+    } catch (e) {
+      if (familyIsAuthError(e.message)) return start();
+      setSync(false);
+    }
+  }
+
+  function addFromInput() {
+    const input = document.getElementById('new-item');
+    const texts = input.value.split(/[\n,]+/).map((t) => t.trim()).filter(Boolean);
+    if (!texts.length) return;
+    input.value = '';
+    const now = new Date().toISOString();
+    act('listAdd', { texts }, () => {
+      texts.forEach((t) => items.splice(items.filter((i) => !i.done).length, 0, { id: 'tmp' + Math.random(), text: t, done: false, addedBy: session.name, added: now }));
+    });
+    input.focus();
+  }
+  document.getElementById('add-btn').addEventListener('click', addFromInput);
+  document.getElementById('new-item').addEventListener('keydown', (e) => { if (e.key === 'Enter') addFromInput(); });
+  document.getElementById('clear-btn').addEventListener('click', () => act('listClearDone', {}, () => { items = items.filter((i) => !i.done); }));
+  document.getElementById('share-btn').addEventListener('click', async () => {
+    const open = items.filter((i) => !i.done).map((i) => '• ' + i.text).join('\n');
+    if (!open) { toolkitToast('Nothing on the list'); return; }
+    const text = 'Family shopping list:\n' + open;
+    if (navigator.share) { try { await navigator.share({ text }); } catch (e) {} }
+    else if (navigator.clipboard) { navigator.clipboard.writeText(text).then(() => toolkitToast('Copied')); }
+  });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
+
+  function start() {
+    clearInterval(pollTimer);
+    document.getElementById('app').classList.add('hidden');
+    familyGate(document.getElementById('gate'), (s) => {
+      session = s;
+      document.getElementById('gate').innerHTML = '';
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('who').textContent = `You: ${s.name}`;
+      render();
+      refresh();
+      pollTimer = setInterval(refresh, 15000);
+    }, { title: 'Sign in to share a list', blurb: 'The Family List is shared by everyone in your Pick\'em group. Use the same group code, name and PIN.' });
+  }
+  start();
+</script>
+</body>
+</html>

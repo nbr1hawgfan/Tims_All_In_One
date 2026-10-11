@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Family Calendar — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
+<style>
+  .view-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); margin-bottom: 12px; }
+  .view-switch button { padding: 9px; border-radius: 999px; border: 0; background: none; color: var(--text-muted); font-weight: 700; font-size: 0.86rem; cursor: pointer; }
+  .view-switch button.on { background: var(--primary); color: #fff; }
+  .people { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 6px; padding: 0 16px 4px; scrollbar-width: none; }
+  .people::-webkit-scrollbar { display: none; }
+  .people button { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+  .people button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc, var(--text-muted)); }
+  .people button.on { border-color: var(--pc, var(--primary-light)); background: color-mix(in srgb, var(--pc, var(--c1)) 20%, transparent); }
+  .empty-day { font-size: 0.8rem; color: var(--text-muted); padding: 4px 4px 2px; }
+
+  .month-head { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 10px; }
+  .month-head b { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; }
+  .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 14px; }
+  .month-grid .dw { text-align: center; font-size: 0.66rem; font-weight: 800; color: var(--text-muted); letter-spacing: 0.04em; padding-bottom: 4px; }
+  .month-grid .dc { aspect-ratio: 1 / 1.05; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 6px; gap: 3px; cursor: pointer; color: var(--text); font-weight: 700; font-size: 0.86rem; }
+  .month-grid .dc.out { opacity: 0.35; }
+  .month-grid .dc.today { border-color: var(--primary-light); box-shadow: inset 0 0 0 1px var(--primary-light); }
+  .month-grid .dc.sel { background: var(--primary); color: #fff; border-color: transparent; }
+  .month-grid .dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; max-width: 80%; }
+  .month-grid .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--dc); }
+  .month-grid .dc.sel .dots i { box-shadow: 0 0 0 1px #fff; }
+  .fab { position: fixed; right: 18px; bottom: calc(22px + env(safe-area-inset-bottom)); width: 58px; height: 58px; border-radius: 20px; border: 0; color: #fff; background: linear-gradient(145deg, var(--c1), var(--c2)); box-shadow: 0 12px 26px -10px var(--c2); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 30; }
+  .fab:active { transform: scale(0.94); }
+  .sync-note { font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: 10px; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="family.html" class="back-link" aria-label="Back">←</a>
+  <div><h1>Family Calendar</h1></div>
+</header>
+
+<main class="shell">
+  <div id="gate"></div>
+  <section id="app" class="hidden">
+    <div class="view-switch" id="view-switch">
+      <button data-v="agenda" class="on">Upcoming</button>
+      <button data-v="month">Month</button>
+    </div>
+    <div class="people" id="people"></div>
+    <div id="body"></div>
+    <p class="sync-note" id="sync-note"></p>
+  </section>
+</main>
+
+<button class="fab hidden" id="fab" aria-label="Add event"></button>
+
+<script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
+<script src="../js/pickem-config.js"></script>
+<script src="../js/family.js"></script>
+<script src="../js/family-ui.js"></script>
+<script>
+  const esc = toolkitEscapeHtml;
+  const cache = familyHubCache() || {};
+  let events = cache.events || [];
+  let tasks = cache.tasks || [];
+  let view = 'agenda';
+  let person = '';            // '' = everyone
+  let monthAnchor = new Date(); monthAnchor.setDate(1);
+  let selDay = familyYmd(new Date());
+
+  document.getElementById('fab').innerHTML = toolkitIcon('plus', 28, 2.6);
+  document.getElementById('fab').addEventListener('click', () => openEditor(null, view === 'month' ? selDay : undefined));
+  document.querySelectorAll('#view-switch button').forEach((b) => b.addEventListener('click', () => {
+    view = b.dataset.v;
+    document.querySelectorAll('#view-switch button').forEach((x) => x.classList.toggle('on', x === b));
+    render();
+  }));
+
+  const people = () => familyKnownPeople(events, tasks, []);
+  const matches = (o) => !person || (o.ev.who || []).some((w) => w.toLowerCase() === person.toLowerCase());
+
+  function renderPeople() {
+    const list = people();
+    const host = document.getElementById('people');
+    if (!list.length) { host.innerHTML = ''; return; }
+    host.innerHTML = `<button data-p="" class="${!person ? 'on' : ''}">Everyone</button>` + list.map((p) =>
+      `<button data-p="${esc(p)}" style="--pc:${familyPersonColor(p)}" class="${person.toLowerCase() === p.toLowerCase() ? 'on' : ''}"><span class="dot"></span>${esc(p)}</button>`).join('');
+    host.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { person = b.dataset.p; render(); }));
+  }
+
+  function render() {
+    renderPeople();
+    if (view === 'agenda') renderAgenda(); else renderMonth();
+  }
+
+  function wireRows(host) {
+    host.querySelectorAll('.ev-row').forEach((row) => row.addEventListener('click', () => {
+      const ev = events.find((x) => x.id === row.dataset.id);
+      if (ev) familyShowEvent(ev, row.dataset.date, handlers);
+    }));
+  }
+
+  function renderAgenda() {
+    const host = document.getElementById('body');
+    const from = familyYmd(new Date());
+    const to = familyYmd(new Date(Date.now() + 45 * 86400000));
+    const occ = familyOccurrences(events, from, to).filter(matches);
+    if (!occ.length) {
+      host.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="calendar-days"></span></div><p>${person ? `Nothing coming up for ${esc(person)}.` : 'Nothing on the calendar yet.'}</p><p>Tap + to add a game, practice, school event or appointment.</p></div>`;
+      return;
+    }
+    const byDay = {};
+    occ.forEach((o) => { (byDay[o.date] = byDay[o.date] || []).push(o); });
+    const today = familyYmd(new Date());
+    let html = '';
+    if (!byDay[today]) html += `<div class="day-h today"><b>Today</b><span>${esc(new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }))}</span></div><div class="empty-day">Nothing scheduled today.</div>`;
+    Object.keys(byDay).sort().forEach((d) => {
+      const label = familyDayLabel(d);
+      const sub = familyParseYmd(d).toLocaleDateString(undefined, { weekday: label === 'Today' || label === 'Tomorrow' ? 'long' : undefined, month: 'short', day: 'numeric' });
+      html += `<div class="day-h ${d === today ? 'today' : ''}"><b>${esc(label)}</b><span>${esc(label.includes(',') ? '' : sub)}</span></div>` + byDay[d].map(familyEventRow).join('');
+    });
+    host.innerHTML = html;
+    wireRows(host);
+  }
+
+  function renderMonth() {
+    const host = document.getElementById('body');
+    const y = monthAnchor.getFullYear(), m = monthAnchor.getMonth();
+    const first = new Date(y, m, 1);
+    const gridStart = new Date(first); gridStart.setDate(1 - first.getDay());
+    const cells = [];
+    for (let i = 0; i < 42; i++) { const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); cells.push(d); }
+    if (cells[35].getMonth() !== m) cells.length = 35; // drop an empty last row
+    const occ = familyOccurrences(events, familyYmd(cells[0]), familyYmd(cells[cells.length - 1])).filter(matches);
+    const byDay = {};
+    occ.forEach((o) => { (byDay[o.date] = byDay[o.date] || []).push(o); });
+    const today = familyYmd(new Date());
+    const dayList = byDay[selDay] || [];
+    host.innerHTML = `
+      <div class="month-head">
+        <button class="icon-btn" id="m-prev" aria-label="Previous month">${toolkitIcon('chevron-left', 18)}</button>
+        <b>${esc(first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }))}</b>
+        <button class="icon-btn" id="m-next" aria-label="Next month">${toolkitIcon('chevron-right', 18)}</button>
+      </div>
+      <div class="month-grid">
+        ${FAMILY_DOW.map((d) => `<div class="dw">${d.slice(0, 2).toUpperCase()}</div>`).join('')}
+        ${cells.map((d) => {
+          const k = familyYmd(d);
+          const dots = (byDay[k] || []).slice(0, 4).map((o) => `<i style="--dc:${(o.ev.who && o.ev.who[0]) ? familyPersonColor(o.ev.who[0]) : familyCat(o.ev.category).color}"></i>`).join('');
+          return `<button class="dc ${d.getMonth() !== m ? 'out' : ''} ${k === today ? 'today' : ''} ${k === selDay ? 'sel' : ''}" data-d="${k}">${d.getDate()}<span class="dots">${dots}</span></button>`;
+        }).join('')}
+      </div>
+      <div class="day-h ${selDay === today ? 'today' : ''}"><b>${esc(familyDayLabel(selDay))}</b><span>${esc(familyParseYmd(selDay).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }))}</span></div>
+      ${dayList.length ? dayList.map(familyEventRow).join('') : `<div class="empty-day">Nothing scheduled. Tap + to add something on this day.</div>`}`;
+    host.querySelector('#m-prev').addEventListener('click', () => { monthAnchor.setMonth(monthAnchor.getMonth() - 1); render(); });
+    host.querySelector('#m-next').addEventListener('click', () => { monthAnchor.setMonth(monthAnchor.getMonth() + 1); render(); });
+    host.querySelectorAll('.dc').forEach((b) => b.addEventListener('click', () => {
+      selDay = b.dataset.d;
+      const d = familyParseYmd(selDay);
+      if (d.getMonth() !== monthAnchor.getMonth()) { monthAnchor = new Date(d.getFullYear(), d.getMonth(), 1); }
+      render();
+    }));
+    wireRows(host);
+  }
+
+  function apply(r) {
+    events = r.events;
+    familyHubCache(Object.assign(familyHubCache() || {}, { events }));
+    render();
+  }
+
+  function openEditor(ev, date) {
+    familyEditEvent(ev, { date, people: people(), onSave: async (payload) => apply(await familyApi('calSave', payload)) });
+  }
+
+  const handlers = {
+    onEdit: (ev) => openEditor(ev),
+    onSkip: async (ev, date) => {
+      try { apply(await familyApi('calSkip', { id: ev.id, date })); toolkitToast(`Skipped ${familyDayLabel(date)}`); }
+      catch (e) { toolkitToast(e.message, { danger: true }); }
+    },
+    onDelete: async (ev) => {
+      try { apply(await familyApi('calDelete', { id: ev.id })); toolkitToast('Deleted'); }
+      catch (e) { toolkitToast(e.message, { danger: true }); }
+    },
+  };
+
+  async function refresh() {
+    try {
+      const r = await familyApi('hubToday');
+      events = r.events; tasks = r.tasks;
+      familyHubCache(r);
+      document.getElementById('sync-note').textContent = 'Shared with your whole family group · up to date';
+      render();
+    } catch (e) {
+      if (familyIsAuthError(e.message)) return start();
+      document.getElementById('sync-note').textContent = 'Offline — showing the last saved calendar';
+    }
+  }
+
+  function start() {
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('fab').classList.add('hidden');
+    familyGate(document.getElementById('gate'), () => {
+      document.getElementById('gate').innerHTML = '';
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('fab').classList.remove('hidden');
+      render();
+      refresh();
+    }, { title: 'Sign in to the family calendar', blurb: 'The calendar is shared with your Pick\'em family group. Use the same group code, name and PIN.' });
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && familySession()) refresh(); });
+  start();
+</script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shopping List — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
+<style>
+  .add-row { display: flex; gap: 8px; margin-bottom: 18px; }
+  .add-row input { margin-bottom: 0; }
+  .add-row button { flex-shrink: 0; }
+  .row-item.checked { opacity: 0.55; }
+  .row-item.checked .row-title { text-decoration: line-through; }
+  .check-circle {
+    width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border);
+    flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; color: #fff;
+  }
+  .check-circle.checked { background: var(--success); border-color: var(--success); }
+  .list-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); margin-bottom: 16px; }
+  .list-switch a { text-align: center; padding: 9px; border-radius: 999px; text-decoration: none; color: var(--text-muted); font-weight: 700; font-size: 0.86rem; }
+  .list-switch a.on { background: var(--primary); color: #fff; }
+  .export-row { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
+  .export-row button { flex: 1; min-width: 90px; }
+
+  #print-area { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area { display: block; position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
+    #print-area h1 { font-size: 1.4rem; margin-bottom: 2px; }
+    #print-area .print-date { font-size: 0.8rem; color: #555; margin-bottom: 16px; }
+    #print-area ul { list-style: none; padding: 0; }
+    #print-area li { padding: 6px 0; border-bottom: 1px solid #ddd; font-size: 1rem; }
+    #print-area .box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #333; margin-right: 10px; vertical-align: middle; }
+    #print-area .box.checked { background: #333; }
+    #print-area li.checked { color: #999; text-decoration: line-through; }
+  }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back to home">←</a>
+  <div><h1>Shopping List</h1></div>
+</header>
+
+<main class="shell">
+  <div class="list-switch">
+    <a href="shopping-list.html" class="on">My List</a>
+    <a href="family-list.html">Family List</a>
+  </div>
+  <div class="add-row">
+    <input type="text" id="new-item" placeholder="Add an item…">
+    <button class="btn" id="add-btn">Add</button>
+  </div>
+
+  <div class="row-list" id="shopping-list"></div>
+
+  <div class="export-row">
+    <button class="btn secondary" id="share-btn"><span data-icon="share" data-size="18"></span>&nbsp;Share</button>
+    <button class="btn secondary" id="print-btn"><span data-icon="printer" data-size="18"></span>&nbsp;Print</button>
+    <button class="btn secondary" id="copy-list-btn"><span data-icon="copy" data-size="18"></span>&nbsp;Copy</button>
+  </div>
+
+  <button class="btn secondary block" id="clear-checked-btn">Clear checked items</button>
+</main>
+
+<div id="print-area">
+  <h1>Shopping List</h1>
+  <div class="print-date" id="print-date"></div>
+  <ul id="print-list"></ul>
+</div>
+
+<script src="../js/db.js"></script>
+<script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
+<script>
+  const newItemEl = document.getElementById('new-item');
+
+  async function addItem() {
+    const name = newItemEl.value.trim();
+    if (!name) return;
+    await dbPut('shopping', { id: toolkitId(), name, qty: 1, note: '', checked: false, addedAt: Date.now() });
+    newItemEl.value = '';
+    refresh();
+  }
+
+  document.getElementById('add-btn').addEventListener('click', addItem);
+  newItemEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
+
+  async function currentItems() {
+    return (await dbGetAll('shopping')).sort((a, b) => {
+      if (a.checked !== b.checked) return a.checked ? 1 : -1;
+      return b.addedAt - a.addedAt;
+    });
+  }
+
+  function listAsText(items) {
+    if (items.length === 0) return 'Shopping list is empty.';
+    return items.map((i) => `${i.checked ? '[x]' : '[ ]'} ${i.name}${i.note ? ' (' + i.note + ')' : ''}`).join('\n');
+  }
+
+  document.getElementById('share-btn').addEventListener('click', async () => {
+    const items = await currentItems();
+    if (items.length === 0) { toolkitToast('Your list is empty', { danger: true }); return; }
+    const text = listAsText(items);
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Shopping List', text }); }
+      catch (e) { /* user cancelled — no error needed */ }
+    } else {
+      window.location.href = `mailto:?subject=${encodeURIComponent('Shopping List')}&body=${encodeURIComponent(text)}`;
+    }
+  });
+
+  document.getElementById('copy-list-btn').addEventListener('click', async () => {
+    const items = await currentItems();
+    if (items.length === 0) { toolkitToast('Your list is empty', { danger: true }); return; }
+    try { await navigator.clipboard.writeText(listAsText(items)); toolkitToast('List copied'); }
+    catch { toolkitToast('Could not copy', { danger: true }); }
+  });
+
+  document.getElementById('print-btn').addEventListener('click', async () => {
+    const items = await currentItems();
+    if (items.length === 0) { toolkitToast('Your list is empty', { danger: true }); return; }
+    document.getElementById('print-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    document.getElementById('print-list').innerHTML = items.map((i) => `
+      <li class="${i.checked ? 'checked' : ''}">
+        <span class="box ${i.checked ? 'checked' : ''}"></span>${toolkitEscapeHtml(i.name)}${i.note ? ' — ' + toolkitEscapeHtml(i.note) : ''}
+      </li>
+    `).join('');
+    window.print();
+  });
+
+  document.getElementById('clear-checked-btn').addEventListener('click', async () => {
+    const all = await dbGetAll('shopping');
+    const checked = all.filter((i) => i.checked);
+    if (checked.length === 0) { toolkitToast('Nothing checked off yet'); return; }
+    for (const item of checked) await dbDelete('shopping', item.id);
+    toolkitToast(`Cleared ${checked.length} item${checked.length > 1 ? 's' : ''}`);
+    refresh();
+  });
+
+  async function refresh() {
+    const items = (await dbGetAll('shopping')).sort((a, b) => {
+      if (a.checked !== b.checked) return a.checked ? 1 : -1;
+      return b.addedAt - a.addedAt;
+    });
+    const listEl = document.getElementById('shopping-list');
+    listEl.innerHTML = '';
+    if (items.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="shopping-cart"></span></div><p>Your list is empty.</p><p>Add items above, or mark a pantry item "running low" to send it here automatically.</p></div>`;
+      return;
+    }
+    items.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'row-item' + (item.checked ? ' checked' : '');
+      row.innerHTML = `
+        <div class="check-circle ${item.checked ? 'checked' : ''}" data-check>${item.checked ? '✓' : ''}</div>
+        <div class="row-main">
+          <div class="row-title">${toolkitEscapeHtml(item.name)}</div>
+          ${item.note ? `<div class="row-sub">${toolkitEscapeHtml(item.note)}</div>` : ''}
+        </div>
+        <button class="icon-btn danger" aria-label="Remove item" data-remove>✕</button>
+      `;
+      row.querySelector('[data-check]').addEventListener('click', async () => {
+        item.checked = !item.checked;
+        await dbPut('shopping', item);
+        refresh();
+      });
+      row.querySelector('[data-remove]').addEventListener('click', async () => {
+        await dbDelete('shopping', item.id);
+        refresh();
+      });
+      listEl.appendChild(row);
+    });
+  }
+
+  refresh();
+</script>
+</body>
+</html>

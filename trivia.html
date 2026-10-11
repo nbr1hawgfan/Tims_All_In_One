@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sports Trivia — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
+<style>
+  .mode-cards { display: grid; gap: 12px; margin-bottom: 18px; }
+  .mode-card { position: relative; overflow: hidden; border-radius: var(--radius-lg); padding: 18px; color: #fff; border: 0; text-align: left; cursor: pointer; box-shadow: var(--shadow-md); font-family: inherit; }
+  .mode-card.daily { background: linear-gradient(140deg, #ff8a3d, #e0245e); }
+  .mode-card.practice { background: linear-gradient(140deg, #4c95ff, #5a3dd8); }
+  .mode-card .t { font-family: var(--font-display); font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
+  .mode-card .d { font-size: 0.86rem; opacity: 0.92; margin-top: 4px; max-width: 75%; }
+  .mode-card .tag { display: inline-block; margin-top: 10px; font-size: 0.72rem; font-weight: 800; background: rgba(255,255,255,0.22); border-radius: 999px; padding: 4px 10px; }
+  .mode-card .ico-big { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); opacity: 0.35; }
+
+  .q-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.78rem; color: var(--text-muted); font-weight: 700; }
+  .progress { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-bottom: 18px; }
+  .progress div { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.3s ease; }
+  .q-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 16px; margin-bottom: 14px; }
+  .q-card .diff { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  .q-card .q { font-family: var(--font-display); font-size: 1.18rem; font-weight: 800; line-height: 1.35; margin-top: 6px; letter-spacing: -0.01em; }
+  .opts { display: grid; gap: 10px; }
+  .opt { text-align: left; padding: 14px 16px; border-radius: var(--radius-md); border: 2px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: 0.95rem; cursor: pointer; font-family: inherit; transition: transform 0.08s ease, border-color 0.15s ease; display: flex; align-items: center; gap: 10px; }
+  .opt:active { transform: scale(0.98); }
+  .opt .ltr { width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.78rem; color: var(--text-muted); }
+  .opt.picked { border-color: var(--primary-light); background: var(--primary-wash); }
+  .opt.right { border-color: var(--success); background: var(--success-wash); }
+  .opt.right .ltr { background: var(--success); color: #fff; }
+  .opt.wrong { border-color: var(--danger); background: var(--danger-wash); }
+  .opt.wrong .ltr { background: var(--danger); color: #fff; }
+  .opt:disabled { cursor: default; }
+  .next-btn { margin-top: 16px; }
+
+  .result-hero { text-align: center; padding: 22px 16px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); margin-bottom: 16px; }
+  .result-hero .big { font-family: var(--font-display); font-size: 3.2rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+  .result-hero .big small { font-size: 1.4rem; color: var(--text-muted); }
+  .result-hero .msg { font-weight: 700; margin-top: 8px; }
+  .review { margin-bottom: 16px; }
+  .rv { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.86rem; }
+  .rv:last-child { border-bottom: 0; }
+  .rv .mk { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; margin-top: 1px; }
+  .rv .mk.ok { background: var(--success); } .rv .mk.no { background: var(--danger); }
+  .rv .a { color: var(--text-muted); font-size: 0.78rem; margin-top: 3px; }
+  .rv .a b { color: var(--success); font-weight: 700; }
+
+  .board-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .board-tabs button { flex: 1; padding: 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+  .board-tabs button.on { background: var(--primary); color: #fff; border-color: transparent; }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--border); }
+  .lb-row:last-child { border-bottom: 0; }
+  .lb-row .rk { width: 26px; text-align: center; font-family: var(--font-display); font-weight: 800; color: var(--text-muted); }
+  .lb-row .rk.gold { color: #f5c542; } .lb-row .rk.silver { color: #c0c8d4; } .lb-row .rk.bronze { color: #d58a4a; }
+  .lb-row .nm { flex: 1; font-weight: 700; }
+  .lb-row .sc { font-family: var(--font-mono); font-weight: 700; }
+  .lb-row .sub { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
+  .lb-row.me { background: var(--primary-wash); border-radius: 10px; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" id="back-link" aria-label="Back">←</a>
+  <div><h1>Sports Trivia</h1></div>
+</header>
+
+<main class="shell">
+  <div id="nav-slot"></div>
+  <section id="home-view"></section>
+  <section id="play-view" class="hidden"></section>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
+<script src="../js/sports-common.js"></script>
+<script src="../js/pickem-config.js"></script>
+<script src="../js/family.js"></script>
+<script>
+  const esc = toolkitEscapeHtml;
+  const LETTERS = ['A', 'B', 'C', 'D'];
+  const PRACTICE_URL = 'https://opentdb.com/api.php?amount=10&category=21&type=multiple&encode=url3986';
+  document.getElementById('nav-slot').replaceWith(sportsRenderNav('trivia'));
+
+  const homeView = document.getElementById('home-view');
+  const playView = document.getElementById('play-view');
+  let daily = null;      // today's daily quiz info from the server
+  let boardTab = 'today';
+  let board = null;
+
+  function showHome() {
+    playView.classList.add('hidden');
+    homeView.classList.remove('hidden');
+    renderHome();
+  }
+
+  function renderHome() {
+    const signedIn = !!familySession() && !!familyRelay();
+    const played = daily && daily.played;
+    homeView.innerHTML = `
+      <div class="mode-cards">
+        <button class="mode-card daily" id="go-daily">
+          <span class="ico-big">${toolkitIcon('trophy', 64, 1.6)}</span>
+          <div class="t">Daily Family Challenge</div>
+          <div class="d">Same 10 questions for everyone today. One shot — your first try counts.</div>
+          <span class="tag">${played ? `You scored ${daily.result.score}/${daily.result.total} today` : signedIn ? 'Play today’s quiz' : 'Sign in to play'}</span>
+        </button>
+        <button class="mode-card practice" id="go-practice">
+          <span class="ico-big">${toolkitIcon('brain', 64, 1.6)}</span>
+          <div class="t">Practice Round</div>
+          <div class="d">10 random sports questions. Play as many as you like — just for fun.</div>
+          <span class="tag">Unlimited</span>
+        </button>
+      </div>
+      <div id="board-slot"></div>`;
+    homeView.querySelector('#go-daily').addEventListener('click', startDaily);
+    homeView.querySelector('#go-practice').addEventListener('click', startPractice);
+    renderBoard();
+  }
+
+  function renderBoard() {
+    const slot = document.getElementById('board-slot');
+    if (!slot) return;
+    if (!familySession() || !familyRelay()) { slot.innerHTML = ''; return; }
+    if (!board) { slot.innerHTML = sportsSkeleton(2, 'row'); return; }
+    const me = familySession().name;
+    const rows = board[boardTab] || [];
+    const medal = (i) => (i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '');
+    slot.innerHTML = `
+      <div class="sec-title" style="font-family:var(--font-display);font-weight:800;font-size:1.02rem;margin:4px 2px 10px">Family Leaderboard</div>
+      <div class="board-tabs">
+        <button data-b="today" class="${boardTab === 'today' ? 'on' : ''}">Today</button>
+        <button data-b="week" class="${boardTab === 'week' ? 'on' : ''}">Last 7 days</button>
+        <button data-b="all" class="${boardTab === 'all' ? 'on' : ''}">All time</button>
+      </div>
+      <div class="card" style="padding:6px 10px">
+        ${rows.length ? rows.map((r, i) => `
+          <div class="lb-row ${r.name === me ? 'me' : ''}">
+            <div class="rk ${medal(i)}">${i < 3 ? '●' : i + 1}</div>
+            <div class="nm">${esc(r.name)}${boardTab !== 'today' ? `<div class="sub">${r.played} ${r.played === 1 ? 'quiz' : 'quizzes'} · ${r.total ? Math.round((r.score / r.total) * 100) : 0}% right</div>` : ''}</div>
+            <div class="sc">${r.score}${boardTab === 'today' ? `/${r.total}` : ''}</div>
+          </div>`).join('') : `<div class="empty-state" style="padding:20px"><p>${boardTab === 'today' ? 'Nobody has played today’s quiz yet. Be first!' : 'No scores yet.'}</p></div>`}
+      </div>`;
+    slot.querySelectorAll('.board-tabs button').forEach((b) => b.addEventListener('click', () => { boardTab = b.dataset.b; renderBoard(); }));
+  }
+
+  async function loadBoard() {
+    if (!familySession() || !familyRelay()) return;
+    try { board = await familyApi('triviaBoard'); } catch (e) { board = { today: [], week: [], all: [] }; }
+    renderBoard();
+  }
+
+  async function loadDailyStatus() {
+    if (!familySession() || !familyRelay()) return;
+    try { daily = await familyApi('triviaToday'); renderHome(); } catch (e) { /* home still works */ }
+  }
+
+  // ---------- Daily ----------
+  function startDaily() {
+    homeView.classList.add('hidden');
+    playView.classList.remove('hidden');
+    familyGate(playView, async () => {
+      playView.innerHTML = sportsSkeleton(3, 'row');
+      try {
+        daily = await familyApi('triviaToday');
+        if (daily.played) {
+          showResult({ questions: daily.questions, answers: daily.result.answers, correct: daily.result.correct, score: daily.result.score, total: daily.result.total, mode: 'daily', already: true });
+        } else {
+          play(daily.questions, 'daily');
+        }
+      } catch (e) {
+        if (familyIsAuthError(e.message)) return startDaily();
+        playView.innerHTML = `<div class="empty-state"><p>${esc(e.message)}</p><button class="btn secondary" onclick="location.reload()">Try again</button></div>`;
+      }
+    }, { title: 'Sign in for the family challenge', blurb: 'Uses your Pick\'em group code, name and PIN so your score shows on the family leaderboard.' });
+  }
+
+  // ---------- Practice ----------
+  async function startPractice() {
+    homeView.classList.add('hidden');
+    playView.classList.remove('hidden');
+    playView.innerHTML = sportsSkeleton(3, 'row');
+    let qs = null;
+    try {
+      const res = await fetch(PRACTICE_URL);
+      const data = await res.json();
+      if (data.response_code !== 0) throw new Error('busy');
+      qs = data.results.map((q) => {
+        const correct = decodeURIComponent(q.correct_answer);
+        const options = q.incorrect_answers.map(decodeURIComponent).concat([correct]);
+        for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; }
+        return { q: decodeURIComponent(q.question), options, answer: options.indexOf(correct), difficulty: q.difficulty };
+      });
+    } catch (e) {
+      // Fall back to fetching through the family server, if it's set up
+      try { if (familySession() && familyRelay()) qs = (await familyApi('triviaPractice')).questions; } catch (e2) {}
+    }
+    if (!qs) {
+      playView.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="hourglass"></span></div><p>The trivia question service is busy.</p><p>Wait a few seconds and try again.</p><button class="btn secondary" id="back-home" style="margin-top:10px">Back</button></div>`;
+      playView.querySelector('#back-home').addEventListener('click', showHome);
+      return;
+    }
+    play(qs, 'practice');
+  }
+
+  // ---------- Playing ----------
+  function play(questions, mode) {
+    const answers = new Array(questions.length).fill(-1);
+    let idx = 0;
+    let practiceScore = 0;
+
+    const draw = () => {
+      const q = questions[idx];
+      const revealed = mode === 'practice' && answers[idx] >= 0;
+      playView.innerHTML = `
+        <div class="q-top"><span>${mode === 'daily' ? 'Daily Challenge' : 'Practice'} · Question ${idx + 1} of ${questions.length}</span>${mode === 'practice' ? `<span>${practiceScore} right</span>` : ''}</div>
+        <div class="progress"><div style="width:${(idx / questions.length) * 100}%"></div></div>
+        <div class="q-card">
+          <div class="diff">${esc(q.difficulty || '')}</div>
+          <div class="q">${esc(q.q)}</div>
+        </div>
+        <div class="opts">${q.options.map((o, i) => {
+          let cls = '';
+          if (revealed) cls = i === q.answer ? 'right' : i === answers[idx] ? 'wrong' : '';
+          else if (answers[idx] === i) cls = 'picked';
+          return `<button class="opt ${cls}" data-i="${i}" ${revealed ? 'disabled' : ''}><span class="ltr">${LETTERS[i]}</span><span>${esc(o)}</span></button>`;
+        }).join('')}</div>
+        ${revealed || (mode === 'daily' && answers[idx] >= 0) ? `<button class="btn block next-btn" id="next">${idx === questions.length - 1 ? (mode === 'daily' ? 'Submit my answers' : 'See my score') : 'Next question'}</button>` : ''}`;
+      playView.querySelectorAll('.opt:not(:disabled)').forEach((b) => b.addEventListener('click', () => {
+        answers[idx] = parseInt(b.dataset.i, 10);
+        if (mode === 'practice' && answers[idx] === q.answer) practiceScore++;
+        draw();
+      }));
+      const next = playView.querySelector('#next');
+      if (next) next.addEventListener('click', async () => {
+        if (idx < questions.length - 1) { idx++; draw(); window.scrollTo(0, 0); return; }
+        if (mode === 'practice') {
+          showResult({ questions, answers, correct: questions.map((x) => x.answer), score: practiceScore, total: questions.length, mode });
+          return;
+        }
+        next.disabled = true; next.textContent = 'Scoring…';
+        try {
+          const r = await familyApi('triviaSubmit', { dateKey: daily.dateKey, answers });
+          daily.played = true; daily.result = r;
+          board = null; loadBoard();
+          showResult({ questions, answers: r.answers, correct: r.correct, score: r.score, total: r.total, mode, already: r.already });
+        } catch (e) {
+          toolkitToast(e.message, { danger: true });
+          next.disabled = false; next.textContent = 'Submit my answers';
+        }
+      });
+    };
+    draw();
+  }
+
+  function showResult({ questions, answers, correct, score, total, mode, already }) {
+    const pct = total ? score / total : 0;
+    const msg = pct === 1 ? 'Perfect score! 🏆' : pct >= 0.8 ? 'All-Star performance! ⭐' : pct >= 0.6 ? 'Solid game! 💪' : pct >= 0.4 ? 'Not bad — keep practicing.' : 'Tough round. Rematch tomorrow!';
+    playView.innerHTML = `
+      <div class="result-hero">
+        <div class="big">${score}<small>/${total}</small></div>
+        <div class="msg">${already ? 'You already played today’s challenge.' : msg}</div>
+        ${mode === 'daily' ? `<p class="helper-text" style="margin:6px 0 0">A new challenge is up every day at midnight (Central).</p>` : ''}
+      </div>
+      <div class="btn-row" style="margin-bottom:16px">
+        ${mode === 'practice' ? `<button class="btn" id="again" style="flex:1">Play another round</button>` : ''}
+        <button class="btn secondary" id="home" style="flex:1">${mode === 'daily' ? 'See the leaderboard' : 'Back'}</button>
+      </div>
+      <div class="card review">
+        ${questions.map((q, i) => {
+          const ok = answers[i] === correct[i];
+          return `<div class="rv"><span class="mk ${ok ? 'ok' : 'no'}">${toolkitIcon(ok ? 'check' : 'x', 14, 3)}</span><div><div>${esc(q.q)}</div><div class="a">${ok ? '' : `You said ${esc(answers[i] >= 0 ? q.options[answers[i]] : '—')} · `}Answer: <b>${esc(q.options[correct[i]])}</b></div></div></div>`;
+        }).join('')}
+      </div>
+      <p class="helper-text">Questions from the Open Trivia Database (opentdb.com).</p>`;
+    const again = playView.querySelector('#again');
+    if (again) again.addEventListener('click', startPractice);
+    playView.querySelector('#home').addEventListener('click', showHome);
+    window.scrollTo(0, 0);
+  }
+
+  renderHome();
+  loadDailyStatus();
+  loadBoard();
+</script>
+</body>
+</html>

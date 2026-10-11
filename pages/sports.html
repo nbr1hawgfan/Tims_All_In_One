@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sports Scores — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Sports Scores — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -164,7 +165,7 @@
     <div class="detail-head" id="detail-head"></div>
     <div class="detail-tools">
       <span class="helper-text" id="detail-updated" style="margin:0;"></span>
-      <button class="btn secondary" id="refresh-btn">↻ Refresh</button>
+      <button class="btn secondary" id="refresh-btn"><span data-icon="refresh-cw" data-size="18"></span>&nbsp;Refresh</button>
     </div>
     <div class="seg-tabs" id="detail-tabs"></div>
     <div id="detail-body"></div>
@@ -172,6 +173,7 @@
 </main>
 
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script src="../js/sports-common.js"></script>
 <script>
   const LEAGUES = SPORTS_LEAGUES;
@@ -265,7 +267,7 @@
       const favIds = sportsFavIds(currentLeague);
       const events = (data.events || []).slice();
       if (events.length === 0) {
-        listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🏟️</div><p>No games today.</p><p>Probably off-season, or nothing scheduled.</p></div>`;
+        listEl.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="goal"></span></div><p>No games today.</p><p>Probably off-season, or nothing scheduled.</p></div>`;
         return;
       }
       // Followed teams first, otherwise ESPN's order
@@ -280,7 +282,7 @@
   async function loadMine(listEl) {
     const favs = sportsGetFavs();
     if (!favs.length) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⭐</div><p>Follow your teams to see all their games in one place.</p><button class="btn" id="pick-teams" style="margin-top:10px;">Pick my teams</button></div>`;
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="star"></span></div><p>Follow your teams to see all their games in one place.</p><button class="btn" id="pick-teams" style="margin-top:10px;">Pick my teams</button></div>`;
       listEl.querySelector('#pick-teams').addEventListener('click', () => sportsOpenTeamPicker(loadScores));
       return;
     }
@@ -291,7 +293,7 @@
     // Team chips → team pages
     const chips = document.createElement('div');
     chips.className = 'my-team-chips';
-    chips.innerHTML = favs.map((f) => `<a href="${sportsTeamUrl(f.league, f.id)}">${img(f.logo)}<span>${esc(f.abbr || f.name)}</span></a>`).join('') + `<button id="edit-teams">✎ Edit</button>`;
+    chips.innerHTML = favs.map((f) => `<a href="${sportsTeamUrl(f.league, f.id)}">${img(f.logo)}<span>${esc(f.abbr || f.name)}</span></a>`).join('') + `<button id="edit-teams"><span data-icon="pencil" data-size="16"></span> Edit</button>`;
     chips.querySelector('#edit-teams').addEventListener('click', () => sportsOpenTeamPicker(loadScores));
     listEl.appendChild(chips);
 
@@ -304,7 +306,7 @@
       });
     });
     if (!count) {
-      listEl.insertAdjacentHTML('beforeend', `<div class="empty-state"><div class="empty-icon">🗓️</div><p>None of your teams play today.</p><p>Tap a team above for its full schedule.</p></div>`);
+      listEl.insertAdjacentHTML('beforeend', `<div class="empty-state"><div class="empty-icon"><span data-icon="calendar-days"></span></div><p>None of your teams play today.</p><p>Tap a team above for its full schedule.</p></div>`);
     }
     if (results.some((r) => r.failed)) toolkitToast('Some scores couldn’t load', { danger: true });
   }
@@ -451,7 +453,7 @@
     const body = document.getElementById('detail-body');
     if (!current.tab) {
       const pre = gameState() === 'pre';
-      body.innerHTML = `<div class="empty-state"><div class="empty-icon">${pre ? '⏳' : '📊'}</div><p>${pre ? 'Stats show up once the game starts.' : 'No stats available for this game yet.'}</p></div>`;
+      body.innerHTML = `<div class="empty-state"><div class="empty-icon">${pre ? '<span data-icon="hourglass"></span>' : '<span data-icon="chart-column"></span>'}</div><p>${pre ? 'Stats show up once the game starts.' : 'No stats available for this game yet.'}</p></div>`;
       return;
     }
     const fn = { leaders: renderLeaders, box: renderBox, team: renderTeamStats, fantasy: renderFantasy, scoring: renderScoring }[current.tab];
@@ -726,7 +728,7 @@
     backdrop.innerHTML = `
       <div class="sheet" role="dialog" aria-label="Player stats">
         <div class="sheet-top">
-          ${head ? img(head) : `<div style="width:64px;height:64px;border-radius:50%;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;font-size:1.6rem;">👤</div>`}
+          ${head ? img(head) : `<div style="width:64px;height:64px;border-radius:50%;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:var(--text-muted)"><span data-icon="user" data-size="30"></span></div>`}
           <div>
             <div class="nm">${esc(athlete.displayName || athlete.fullName || '')}</div>
             <div class="sub">${esc([jersey, pos, team && (team.displayName || team.abbreviation)].filter(Boolean).join(' · '))}</div>

@@ -1,4 +1,4 @@
-# Personal Toolkit
+# Jennings Hub
 
 A personal-use PWA: pantry scanning → shopping list, calculators, notes with
 photos, a weight/BMI/body-fat tracker, and an encrypted vault for logins and
@@ -222,6 +222,43 @@ bracket on Selection Sunday, so that's the time to build and test it.
   Questions come from the free Open Trivia Database (opentdb.com), sports
   category. The daily quiz needs the Family Hub (below); practice works for
   anyone.
+
+## Family Calendar & Home Tasks
+
+The **Family** tab (bottom bar) is the family's home base: today's events,
+what's coming up this week, tasks due, and quick links to the Calendar,
+Tasks, Family List, Birthdays, Pick'em and Trivia.
+
+- **Family Calendar** (`family-calendar.html`) — shared by everyone in the
+  family group. Each event has a type (School, Sports, Cheer, Appointment,
+  Family, Work, Other), who it's for (each name gets its own color — add the
+  kids' names right in the event form), time or all-day, place and notes.
+  - **Weekly repeats** for practices: pick the days (e.g. Tue + Thu) and an
+    optional end date. **Skip this date** removes a single canceled practice.
+  - **Upcoming** list or **Month** grid, and filter by person.
+  - **Add to my phone's calendar** saves the event (with its repeats) into the
+    phone's own calendar app.
+- **Home Tasks** (`family-tasks.html`) — chores and to-dos with who's doing
+  it, a due date and optional daily / weekly / monthly repeat. Checking off a
+  repeating task moves it to its next due date. Grouped into Overdue, Today,
+  This week, Later and Anytime, with a "done today" ring.
+
+These live in the Events and Tasks tabs of the Family Hub Sheet.
+
+## Look & feel (Jennings Hub)
+
+- **Bottom tab bar** on every screen: Home · Sports · Family · Settings.
+- **Every tool has its own color** (matching its home-screen icon) for its
+  header icon, buttons and result panels. Settings → *Colorful tools* turns
+  this off to use your one theme color everywhere.
+- All icons are Lucide line icons (bundled in `js/icons.js`); emoji are only
+  used for fun content.
+- New app icon and name — after updating, anyone who installed the old
+  "Toolkit" icon should **delete it from their home screen and add it again**
+  (phones don't refresh the icon or name of an installed web app).
+- `js/boot.js` (in each page's `<head>`) applies dark/light mode, the theme
+  and the page's color before anything draws. A new page gets its color and
+  header icon by adding a line to `TOOLKIT_PAGES` in `js/boot.js`.
 
 ## Family List, Birthdays & Fact of the Day
 

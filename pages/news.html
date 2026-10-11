@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sports News — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Sports News — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -47,6 +48,7 @@
 </main>
 
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script src="../js/sports-common.js"></script>
 <script>
   const esc = toolkitEscapeHtml;
@@ -81,7 +83,7 @@
       if (which === 'mine') {
         const favs = sportsGetFavs().slice(0, 10);
         if (!favs.length) {
-          body.innerHTML = `<div class="empty-state"><div class="empty-icon">⭐</div><p>Follow your teams to get a news feed just for them.</p><button class="btn" id="pick" style="margin-top:10px;">Pick my teams</button></div>`;
+          body.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="star"></span></div><p>Follow your teams to get a news feed just for them.</p><button class="btn" id="pick" style="margin-top:10px;">Pick my teams</button></div>`;
           body.querySelector('#pick').addEventListener('click', () => sportsOpenTeamPicker(load));
           return;
         }

@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sports Trivia — Personal Toolkit</title>
+<title>Sports Trivia — Jennings Hub</title>
 <meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -202,7 +203,7 @@
       try { if (familySession() && familyRelay()) qs = (await familyApi('triviaPractice')).questions; } catch (e2) {}
     }
     if (!qs) {
-      playView.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><p>The trivia question service is busy.</p><p>Wait a few seconds and try again.</p><button class="btn secondary" id="back-home" style="margin-top:10px">Back</button></div>`;
+      playView.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="hourglass"></span></div><p>The trivia question service is busy.</p><p>Wait a few seconds and try again.</p><button class="btn secondary" id="back-home" style="margin-top:10px">Back</button></div>`;
       playView.querySelector('#back-home').addEventListener('click', showHome);
       return;
     }

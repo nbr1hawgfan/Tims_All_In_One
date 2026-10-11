@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Player Search — Personal Toolkit</title>
+<title>Player Search — Jennings Hub</title>
 <meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -117,7 +118,7 @@
     const recent = getRecent();
     host.innerHTML = recent.length
       ? `<div class="sec-label"><span>Recently viewed</span><button id="clear-recent">Clear</button></div>${recent.map(rowHtml).join('')}`
-      : `<div class="empty-state"><div class="empty-icon">🔎</div><p>Search by name — even part of one.</p><p>Try “Mahomes”, “LeBron” or “Ohtani”.</p></div>`;
+      : `<div class="empty-state"><div class="empty-icon"><span data-icon="search"></span></div><p>Search by name — even part of one.</p><p>Try “Mahomes”, “LeBron” or “Ohtani”.</p></div>`;
     const c = host.querySelector('#clear-recent');
     if (c) c.addEventListener('click', () => { try { localStorage.removeItem(RECENT_KEY); } catch (e) {} showRecent(); });
   }
@@ -180,7 +181,7 @@
     const injuries = pick('injuries') || [];
     const inj = injuries[0] && (injuries[0].status || (injuries[0].type && injuries[0].type.description));
     document.getElementById('page-title').textContent = name;
-    document.title = `${name} — Personal Toolkit`;
+    document.title = `${name} — Jennings Hub`;
     addRecent({ id, sport, league, name, label: `${LEAGUE_LABEL[league] || league.toUpperCase()}${team.displayName ? ' - ' + team.displayName : ''}`, pos, jersey: a.jersey || pick('displayJersey'), headshot });
 
     const color = team.color && /^[0-9a-f]{6}$/i.test(team.color) ? '#' + team.color : '';

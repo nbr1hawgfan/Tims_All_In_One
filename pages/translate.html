@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Translator — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Translator — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -51,7 +52,7 @@
         <option value="vi">Vietnamese</option>
         <option value="ru">Russian</option>
       </select>
-      <button class="swap-btn" id="swap-btn" aria-label="Swap languages">⇄</button>
+      <button class="swap-btn" id="swap-btn" aria-label="Swap languages"><span data-icon="arrow-left-right" data-size="18"></span></button>
       <select id="to-lang">
         <option value="es">Spanish</option>
         <option value="en">English</option>
@@ -74,13 +75,13 @@
 
     <div class="btn-row" style="margin-bottom:6px;">
       <button class="btn" id="translate-btn" style="flex:1;">Translate</button>
-      <button class="icon-btn" id="speak-src-btn" aria-label="Read original aloud" title="Read original aloud">🔊</button>
+      <button class="icon-btn" id="speak-src-btn" aria-label="Read original aloud" title="Read original aloud"><span data-icon="volume-2" data-size="18"></span></button>
     </div>
   </div>
 
   <div class="shelf-label">Translation</div>
   <div class="translation-box placeholder" id="translation-box">Your translation will appear here.</div>
-  <button class="btn secondary block" id="speak-out-btn" disabled>🔊 Read translation aloud</button>
+  <button class="btn secondary block" id="speak-out-btn" disabled><span data-icon="volume-2" data-size="18"></span>&nbsp;Read translation aloud</button>
 
   <p class="helper-text" style="margin-top:18px;">
     Translations come from a free public translation service and read-aloud uses your device's built-in voices — both need an internet connection except for text you've already translated once in this session.
@@ -88,6 +89,7 @@
 </main>
 
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script>
   const fromLang = document.getElementById('from-lang');
   const toLang = document.getElementById('to-lang');

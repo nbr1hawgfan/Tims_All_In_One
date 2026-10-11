@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Birthdays — Personal Toolkit</title>
+<title>Birthdays — Jennings Hub</title>
 <meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -106,7 +107,7 @@
     const shown = withNext.filter((x) => filter === 'all' || x.d.kind === filter);
     const host = document.getElementById('list');
     if (!dates.length) {
-      host.innerHTML = `<div class="empty-state"><div class="empty-icon">🎂</div><p>No dates yet.</p><p>Tap + to add a birthday or anniversary.</p></div>`;
+      host.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="cake"></span></div><p>No dates yet.</p><p>Tap + to add a birthday or anniversary.</p></div>`;
       return;
     }
     if (!shown.length) { host.innerHTML = `<div class="empty-state"><p>Nothing here yet.</p></div>`; return; }

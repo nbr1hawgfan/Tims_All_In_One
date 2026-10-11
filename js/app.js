@@ -2,99 +2,6 @@
    Personal Toolkit — shared utilities
    ============================================================ */
 
-// ---------- Color themes ----------
-// Stored in localStorage (not IndexedDB) so every page — even ones that
-// don't load db.js — can apply the chosen theme instantly on load.
-const TOOLKIT_THEMES = {
-  teal:   { name: 'Teal',   swatch: '#0a5870', '--primary': '#0a5870', '--primary-dark': '#073e50', '--primary-light': '#128aa3', '--primary-wash': '#e4f2f5', '--accent': '#d9a441', '--accent-wash': '#fbf1dd' },
-  purple: { name: 'Plum',   swatch: '#6b3fa0', '--primary': '#6b3fa0', '--primary-dark': '#4a2b70', '--primary-light': '#8a5cc4', '--primary-wash': '#f0e8f7', '--accent': '#c9506b', '--accent-wash': '#fbe9ee' },
-  forest: { name: 'Forest', swatch: '#1f6f4a', '--primary': '#1f6f4a', '--primary-dark': '#144d33', '--primary-light': '#3a9e6f', '--primary-wash': '#e6f5ee', '--accent': '#d9a441', '--accent-wash': '#fbf1dd' },
-  sunset: { name: 'Sunset', swatch: '#c15a2e', '--primary': '#c15a2e', '--primary-dark': '#8f3f1e', '--primary-light': '#e07b45', '--primary-wash': '#fbe9e0', '--accent': '#3a7ca5', '--accent-wash': '#e3eef5' },
-  berry:  { name: 'Berry',  swatch: '#a13058', '--primary': '#a13058', '--primary-dark': '#74213f', '--primary-light': '#c94d76', '--primary-wash': '#f9e5ec', '--accent': '#d9a441', '--accent-wash': '#fbf1dd' },
-  slate:  { name: 'Slate',  swatch: '#34495e', '--primary': '#34495e', '--primary-dark': '#22303d', '--primary-light': '#5c7a91', '--primary-wash': '#e8edf1', '--accent': '#d9a441', '--accent-wash': '#fbf1dd' },
-  rainbow: {
-    name: 'Rainbow',
-    swatch: 'linear-gradient(90deg,#ff4d4d,#ff9f4d,#ffe14d,#6ee06e,#4dd6ff,#6e7bff,#c76eff)',
-    '--primary': 'linear-gradient(90deg,#ff4d4d,#ff9f4d,#ffe14d,#6ee06e,#4dd6ff,#6e7bff,#c76eff)',
-    '--primary-dark': 'linear-gradient(90deg,#e6394f,#f4813f,#e0bd2f,#4fae65,#3fa9e6,#5c62d6,#a94fe0)',
-    '--primary-light': '#8a5cc4',
-    '--primary-wash': '#f5eefc',
-    '--accent': '#ff6fae',
-    '--accent-wash': '#fff0f6',
-  },
-};
-const TOOLKIT_THEME_KEY = 'personal-toolkit-theme';
-
-function toolkitGetTheme() {
-  try { return localStorage.getItem(TOOLKIT_THEME_KEY) || 'teal'; } catch (e) { return 'teal'; }
-}
-
-// ---------- Light / dark mode ----------
-const TOOLKIT_MODE_KEY = 'personal-toolkit-mode'; // 'dark' (default) | 'light' | 'auto'
-
-function toolkitGetMode() {
-  try { return localStorage.getItem(TOOLKIT_MODE_KEY) || 'dark'; } catch (e) { return 'dark'; }
-}
-function toolkitEffectiveMode() {
-  const m = toolkitGetMode();
-  if (m === 'auto') return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  return m === 'light' ? 'light' : 'dark';
-}
-function toolkitSetMode(mode) {
-  try { localStorage.setItem(TOOLKIT_MODE_KEY, mode); } catch (e) {}
-  toolkitApplyTheme(toolkitGetTheme());
-}
-if (window.matchMedia) {
-  const mq = window.matchMedia('(prefers-color-scheme: light)');
-  const onChange = () => { if (toolkitGetMode() === 'auto') toolkitApplyTheme(toolkitGetTheme()); };
-  if (mq.addEventListener) mq.addEventListener('change', onChange); else if (mq.addListener) mq.addListener(onChange);
-}
-
-// Blend two #rrggbb colors (t = share of b)
-function toolkitMix(a, b, t) {
-  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-  if (!/^#[0-9a-f]{6}$/i.test(a) || !/^#[0-9a-f]{6}$/i.test(b)) return a;
-  const x = p(a), y = p(b);
-  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
-}
-
-const TOOLKIT_THEME_KEYS = ['--primary', '--primary-dark', '--primary-light', '--primary-wash', '--accent', '--accent-wash'];
-
-function toolkitApplyTheme(themeId) {
-  const theme = TOOLKIT_THEMES[themeId] || TOOLKIT_THEMES.teal;
-  const root = document.documentElement;
-  const mode = toolkitEffectiveMode();
-  root.setAttribute('data-mode', mode);
-  let vars;
-  if (mode === 'dark') {
-    // On a dark background the brighter shade leads, and the "wash" tints get dark
-    const surface = '#141922';
-    const solidLight = String(theme['--primary-light']);
-    const isGradient = String(theme['--primary']).includes('gradient');
-    vars = {
-      '--primary': isGradient ? theme['--primary'] : solidLight,
-      '--primary-dark': isGradient ? theme['--primary-dark'] : theme['--primary'],
-      '--primary-light': toolkitMix(solidLight, '#ffffff', 0.35),
-      '--primary-wash': toolkitMix(surface, solidLight, 0.18),
-      '--accent': theme['--accent'],
-      '--accent-wash': toolkitMix(surface, String(theme['--accent']), 0.16),
-    };
-  } else {
-    vars = {};
-    TOOLKIT_THEME_KEYS.forEach((k) => { vars[k] = theme[k]; });
-  }
-  TOOLKIT_THEME_KEYS.forEach((k) => root.style.setProperty(k, vars[k]));
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', mode === 'dark' ? '#0b0e13' : '#f3f6f8');
-}
-
-function toolkitSetTheme(themeId) {
-  try { localStorage.setItem(TOOLKIT_THEME_KEY, themeId); } catch (e) {}
-  toolkitApplyTheme(themeId);
-}
-
-// Apply immediately on every page load, before anything else runs.
-toolkitApplyTheme(toolkitGetTheme());
 
 function toolkitToast(message, opts = {}) {
   let el = document.getElementById('toolkit-toast');
@@ -164,3 +71,71 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+
+// ============================================================
+// App chrome — header icon, bottom tab bar, icons, motion
+// ============================================================
+(function toolkitChrome() {
+  const inPages = /\/pages\//.test(location.pathname);
+  const root = inPages ? '../' : '';
+  const file = typeof TOOLKIT_PAGE_FILE !== 'undefined' ? TOOLKIT_PAGE_FILE : '';
+  const page = typeof TOOLKIT_PAGE !== 'undefined' ? TOOLKIT_PAGE : null;
+
+  function decorate() {
+    const icon = (name, size, stroke) => (typeof toolkitIcon === 'function' ? toolkitIcon(name, size, stroke) : '');
+
+    // Header: real back icon + the tool's colored icon chip
+    const header = document.querySelector('.app-header');
+    if (header && !header.dataset.decorated) {
+      header.dataset.decorated = '1';
+      const back = header.querySelector('.back-link');
+      if (back && /^\s*←\s*$/.test(back.textContent)) back.innerHTML = icon('chevron-left', 22, 2.4);
+      const h1 = header.querySelector('h1');
+      if (h1 && page && page[1]) {
+        const chip = document.createElement('span');
+        chip.className = 'hdr-chip';
+        chip.innerHTML = icon(page[1], 18, 2.2);
+        h1.parentNode.insertBefore(chip, h1.parentNode.firstChild);
+        h1.parentNode.classList.add('hdr-title');
+      }
+    }
+
+    // Bottom tab bar (not on the full-screen highlights feed)
+    if (file !== 'highlights.html' && !document.querySelector('.tabbar')) {
+      const group = page ? page[0] : null;
+      const active = file === 'index.html' || file === '' ? 'home'
+        : file === 'settings.html' ? 'settings'
+        : group === 'sports' ? 'sports'
+        : group === 'family' ? 'family' : 'home';
+      const tabs = [
+        ['home', 'Home', 'house', root + 'index.html'],
+        ['sports', 'Sports', 'goal', root + 'pages/sports.html'],
+        ['family', 'Family', 'users', root + 'pages/family.html'],
+        ['settings', 'Settings', 'settings', root + 'pages/settings.html'],
+      ];
+      const bar = document.createElement('nav');
+      bar.className = 'tabbar';
+      bar.setAttribute('aria-label', 'Main');
+      bar.innerHTML = tabs.map(([k, label, ic, href]) =>
+        `<a href="${href}" class="${k === active ? 'on' : ''}" ${k === active ? 'aria-current="page"' : ''}>${icon(ic, 22, k === active ? 2.4 : 2)}<span>${label}</span></a>`).join('');
+      document.body.appendChild(bar);
+      document.body.classList.add('has-tabbar');
+    }
+    if (typeof toolkitHydrateIcons === 'function') toolkitHydrateIcons();
+  }
+
+  // Icons added later by page scripts ([data-icon] placeholders) get drawn automatically
+  function watch() {
+    if (typeof toolkitHydrateIcons !== 'function' || !window.MutationObserver) return;
+    let queued = false;
+    new MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      (window.requestAnimationFrame || ((f) => setTimeout(f, 16)))(() => { queued = false; toolkitHydrateIcons(); });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
+  const run = () => { decorate(); watch(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else setTimeout(run, 0);
+})();

@@ -1,34 +1,69 @@
 {
-  "name": "Personal Toolkit",
-  "short_name": "Toolkit",
-  "description": "Pantry scanning, shopping lists, calculators, notes, health tracking, and a secure vault — all on-device.",
+  "name": "Jennings Hub",
+  "short_name": "Jennings Hub",
+  "description": "The Jennings family hub \u2014 sports, pick'em, family calendar, shared lists and everyday tools.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f5fafb",
-  "theme_color": "#0a5870",
+  "background_color": "#0b0e13",
+  "theme_color": "#0b0e13",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
     {
-      "name": "Shopping List",
-      "url": "./pages/shopping-list.html",
-      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+      "name": "Family Calendar",
+      "url": "./pages/family-calendar.html",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
-      "name": "Notes",
-      "url": "./pages/notes.html",
-      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+      "name": "Scores",
+      "url": "./pages/sports.html",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
-      "name": "Secure Vault",
-      "url": "./pages/vault.html",
-      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+      "name": "Family List",
+      "url": "./pages/family-list.html",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

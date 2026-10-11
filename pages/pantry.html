@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pantry Scanner — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Pantry Scanner — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -47,7 +48,7 @@
 
 <main class="shell">
   <div class="btn-row" style="margin-bottom:18px;">
-    <button class="btn" id="scan-btn" style="flex:1;">📷 Scan barcode</button>
+    <button class="btn" id="scan-btn" style="flex:1;"><span data-icon="camera" data-size="18"></span>&nbsp;Scan barcode</button>
     <button class="btn secondary" id="manual-btn" style="flex:1;">+ Add manually</button>
   </div>
 
@@ -130,6 +131,7 @@
 
 <script src="../js/db.js"></script>
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script>
   let editingId = null;
   let pendingBarcode = null;
@@ -191,7 +193,7 @@
 
     const chipsEl = document.getElementById('allergen-chips');
     chipsEl.innerHTML = (pendingAllergens && pendingAllergens.length)
-      ? `<span class="chip danger">⚠ Contains: ${pendingAllergens.map(toolkitEscapeHtml).join(', ')}</span>`
+      ? `<span class="chip danger"><span data-icon="triangle-alert" data-size="16"></span> Contains: ${pendingAllergens.map(toolkitEscapeHtml).join(', ')}</span>`
       : '';
 
     const gridEl = document.getElementById('nutrition-grid');
@@ -483,7 +485,7 @@
     const listEl = document.getElementById('pantry-list');
     listEl.innerHTML = '';
     if (items.length === 0) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🥫</div><p>Your pantry is empty.</p><p>Scan a barcode or add an item manually.</p></div>`;
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="package"></span></div><p>Your pantry is empty.</p><p>Scan a barcode or add an item manually.</p></div>`;
       return;
     }
     items.forEach((item) => {
@@ -493,10 +495,10 @@
         ${item.imageDataUrl ? `<img class="row-thumb" src="${item.imageDataUrl}" alt="">` : `<div class="row-thumb" style="display:flex;align-items:center;justify-content:center;">🥫</div>`}
         <div class="row-main">
           <div class="row-title">${toolkitEscapeHtml(item.name)}</div>
-          <div class="row-sub">${item.brand ? toolkitEscapeHtml(item.brand) + ' · ' : ''}${item.category} · Qty ${item.qty}${item.lowStock ? ' · <span class="chip low-badge">Running low</span>' : ''}${item.allergens && item.allergens.length ? ' · <span class="chip danger">⚠ ' + item.allergens.slice(0, 2).map(toolkitEscapeHtml).join(', ') + (item.allergens.length > 2 ? '…' : '') + '</span>' : ''}</div>
+          <div class="row-sub">${item.brand ? toolkitEscapeHtml(item.brand) + ' · ' : ''}${item.category} · Qty ${item.qty}${item.lowStock ? ' · <span class="chip low-badge">Running low</span>' : ''}${item.allergens && item.allergens.length ? ' · <span class="chip danger"><span data-icon="triangle-alert" data-size="16"></span> ' + item.allergens.slice(0, 2).map(toolkitEscapeHtml).join(', ') + (item.allergens.length > 2 ? '…' : '') + '</span>' : ''}</div>
         </div>
         <button class="icon-btn" aria-label="Add to shopping list" data-add>🛒</button>
-        <button class="icon-btn" aria-label="Edit item" data-edit>✎</button>
+        <button class="icon-btn" aria-label="Edit item" data-edit><span data-icon="pencil" data-size="18"></span></button>
       `;
       row.querySelector('[data-edit]').addEventListener('click', () => openItemModal(item));
       row.querySelector('[data-add]').addEventListener('click', async () => {

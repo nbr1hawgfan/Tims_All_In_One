@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Family — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
+<style>
+  .fam-hero { position: relative; overflow: hidden; border-radius: 22px; padding: 18px; margin-bottom: 16px; color: #fff; background: linear-gradient(140deg, #ff8ac6, #d0367f 55%, #7b3fe4); box-shadow: 0 16px 32px -18px #d0367f; }
+  .fam-hero .k { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
+  .fam-hero h2 { color: #fff; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 12px; }
+  .fam-hero .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .fam-hero .stats a { background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.22); border-radius: 14px; padding: 10px 8px; text-align: center; color: #fff; text-decoration: none; }
+  .fam-hero .stats b { display: block; font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
+  .fam-hero .stats span { font-size: 0.68rem; font-weight: 700; opacity: 0.9; }
+  .fam-hero .blob { position: absolute; right: -50px; top: -50px; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.08); }
+  .sec { display: flex; align-items: center; justify-content: space-between; margin: 20px 2px 10px; }
+  .sec b { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; }
+  .sec a { font-size: 0.8rem; font-weight: 700; color: var(--ink-accent); text-decoration: none; display: inline-flex; align-items: center; gap: 2px; }
+  .quiet { font-size: 0.86rem; color: var(--text-muted); background: var(--surface); border: 1px dashed var(--border); border-radius: 14px; padding: 14px; text-align: center; }
+  .quiet a { color: var(--ink-accent); font-weight: 700; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gt { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); text-decoration: none; color: var(--text); min-height: 112px; transition: transform 0.12s ease; }
+  .gt:active { transform: scale(0.97); }
+  .gt .ic { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(145deg, var(--g1), var(--g2)); box-shadow: 0 6px 14px -6px var(--g2); }
+  .gt b { font-weight: 800; font-size: 0.95rem; }
+  .gt small { display: block; color: var(--text-muted); font-size: 0.74rem; margin-top: 2px; font-weight: 500; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="../index.html" class="back-link" aria-label="Back">←</a>
+  <div><h1>Family</h1></div>
+</header>
+
+<main class="shell">
+  <div id="gate"></div>
+  <section id="app" class="hidden">
+    <div class="fam-hero">
+      <div class="blob"></div>
+      <div class="k" id="today-label"></div>
+      <h2 id="fam-name">The Family</h2>
+      <div class="stats">
+        <a href="family-calendar.html"><b id="st-events">–</b><span>Today</span></a>
+        <a href="family-tasks.html"><b id="st-tasks">–</b><span>Tasks due</span></a>
+        <a href="family-list.html"><b id="st-list">–</b><span>On the list</span></a>
+      </div>
+    </div>
+
+    <div class="sec"><b>Today</b><a href="family-calendar.html">Calendar <span data-icon="chevron-right" data-size="16"></span></a></div>
+    <div id="today-events"></div>
+
+    <div class="sec"><b>Coming up</b></div>
+    <div id="soon-events"></div>
+
+    <div class="sec"><b>Tasks</b><a href="family-tasks.html">All tasks <span data-icon="chevron-right" data-size="16"></span></a></div>
+    <div id="task-list"></div>
+
+    <div class="sec"><b>Family tools</b></div>
+    <div class="grid" id="tools"></div>
+  </section>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
+<script src="../js/pickem-config.js"></script>
+<script src="../js/family.js"></script>
+<script src="../js/family-ui.js"></script>
+<script>
+  const esc = toolkitEscapeHtml;
+  let data = familyHubCache() || { events: [], tasks: [], dates: familyCachedDates(), listOpen: null };
+
+  document.getElementById('today-label').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
+  function render() {
+    const today = familyYmd(new Date());
+    const events = data.events || [], tasks = data.tasks || [];
+    if (data.group) {
+      let n = String(data.group).replace(/\s*pick'?em\s*$/i, '').trim();
+      if (n && !/family/i.test(n)) n += ' Family';
+      document.getElementById('fam-name').textContent = n || 'The Family';
+    }
+
+    const todays = familyOccurrences(events, today, today);
+    document.getElementById('st-events').textContent = todays.length;
+    const due = tasks.filter((t) => !t.done && t.due && t.due <= today);
+    document.getElementById('st-tasks').textContent = due.length;
+    document.getElementById('st-list').textContent = data.listOpen == null ? '–' : data.listOpen;
+
+    document.getElementById('today-events').innerHTML = todays.length
+      ? todays.map(familyEventRow).join('')
+      : `<div class="quiet">Nothing on the calendar today. <a href="family-calendar.html">Add something</a></div>`;
+
+    const tmr = familyYmd(new Date(Date.now() + 86400000));
+    const soon = familyOccurrences(events, tmr, familyYmd(new Date(Date.now() + 7 * 86400000))).slice(0, 5);
+    document.getElementById('soon-events').innerHTML = soon.length
+      ? soon.map((o) => familyEventRow(o).replace('<div class="tm">', `<div class="tm"><span style="display:block;color:var(--ink-accent)">${esc(familyParseYmd(o.date).toLocaleDateString(undefined, { weekday: 'short' }))}</span>`)).join('')
+      : `<div class="quiet">Nothing else this week.</div>`;
+
+    const show = due.concat(tasks.filter((t) => !t.done && !t.due)).slice(0, 5);
+    document.getElementById('task-list').innerHTML = show.length
+      ? show.map(familyTaskRow).join('')
+      : `<div class="quiet">No tasks due. <a href="family-tasks.html">Add a chore or to-do</a></div>`;
+
+    document.querySelectorAll('.ev-row').forEach((row) => row.addEventListener('click', () => { location.href = 'family-calendar.html'; }));
+    document.querySelectorAll('#task-list .tk-row').forEach((row) => {
+      const t = tasks.find((x) => x.id === row.dataset.id);
+      row.querySelector('.ck').addEventListener('click', async () => {
+        t.done = true; render();
+        try {
+          const r = await familyApi('taskToggle', { id: t.id, done: true });
+          data.tasks = r.tasks; familyHubCache(data); render();
+          toolkitToast(r.rolled ? 'Done — next one is scheduled' : 'Done!');
+        } catch (e) { t.done = false; render(); toolkitToast(e.message, { danger: true }); }
+      });
+      row.querySelector('.bd').addEventListener('click', () => { location.href = 'family-tasks.html'; });
+    });
+
+    const nextDate = (data.dates || []).map((d) => ({ d, n: familyNextOccurrence(d) })).sort((a, b) => a.n.days - b.n.days)[0];
+    const tools = [
+      ['Calendar', 'family-calendar.html', 'calendar-days', '#ff79bd', '#d0367f', 'Games, practices, school'],
+      ['Tasks', 'family-tasks.html', 'list-checks', '#36d399', '#0f9a7c', 'Chores & to-dos'],
+      ['Family List', 'family-list.html', 'shopping-basket', '#ffb52e', '#f2681f', data.listOpen ? `${data.listOpen} item${data.listOpen === 1 ? '' : 's'} to get` : 'Shared groceries'],
+      ['Birthdays', 'birthdays.html', 'cake', '#9b7bff', '#5a3dd8', nextDate ? `${nextDate.d.name} ${familyDaysLabel(nextDate.n.days)}` : 'Never miss one'],
+      ["Pick'em", 'pickem.html', 'target', '#ff6a45', '#e0245e', 'Weekly NFL picks'],
+      ['Trivia', 'trivia.html', 'brain', '#4c95ff', '#2754d4', 'Daily family challenge'],
+    ];
+    document.getElementById('tools').innerHTML = tools.map(([n, href, ic, g1, g2, sub]) => `
+      <a class="gt" href="${href}" style="--g1:${g1};--g2:${g2}"><span class="ic">${toolkitIcon(ic, 22, 2.2)}</span><span><b>${esc(n)}</b><small>${esc(sub)}</small></span></a>`).join('');
+  }
+
+  async function refresh() {
+    try {
+      data = await familyApi('hubToday');
+      familyHubCache(data);
+      familyCacheDates(data.dates);
+      render();
+    } catch (e) {
+      if (familyIsAuthError(e.message)) return start();
+    }
+  }
+
+  function start() {
+    document.getElementById('app').classList.add('hidden');
+    familyGate(document.getElementById('gate'), () => {
+      document.getElementById('gate').innerHTML = '';
+      document.getElementById('app').classList.remove('hidden');
+      render();
+      refresh();
+    }, { title: 'Sign in to your family', blurb: 'Your family calendar, tasks, shared list and birthdays — all in one place. Use your Pick\'em group code, name and PIN.' });
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && familySession()) refresh(); });
+  start();
+</script>
+</body>
+</html>

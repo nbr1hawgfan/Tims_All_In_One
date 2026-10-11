@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Highlights — Personal Toolkit</title>
-<meta name="theme-color" content="#000000">
+<title>Highlights — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -58,6 +59,7 @@
 <div class="msg hidden" id="msg"></div>
 
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script src="../js/sports-common.js"></script>
 <script>
   const esc = toolkitEscapeHtml;
@@ -148,7 +150,7 @@
     const clips = [];
     lists.filter(Boolean).flat().forEach((c) => { if (!seen.has(c.id)) { seen.add(c.id); clips.push(c); } });
     clips.sort((a, b) => new Date(b.published) - new Date(a.published));
-    if (!clips.length) { showMsg('<div style="font-size:2rem">🎬</div><p>No highlight clips right now.</p><p>Check back after games wrap up.</p>'); return; }
+    if (!clips.length) { showMsg('<div style="opacity:.7">' + toolkitIcon('clapperboard', 40) + '</div><p>No highlight clips right now.</p><p>Check back after games wrap up.</p>'); return; }
     msg.classList.add('hidden');
     render(clips);
   }
@@ -162,7 +164,7 @@
         ${c.src
           ? `<video src="${esc(c.src)}" ${c.image ? `poster="${esc(c.image)}"` : ''} playsinline webkit-playsinline loop muted preload="none"></video>`
           : `${c.image ? `<img class="poster" src="${esc(c.image)}" alt="" loading="lazy">` : ''}<a class="play-big" href="${esc(c.web)}" target="_blank" rel="noopener" aria-label="Watch on ESPN">▶</a>`}
-        ${c.src ? `<div class="side-btns"><button class="mute-btn" aria-label="Sound">${muted ? '🔇' : '🔊'}</button></div>` : ''}
+        ${c.src ? `<div class="side-btns"><button class="mute-btn" aria-label="Sound">${toolkitIcon(muted ? 'volume-x' : 'volume-2', 22)}</button></div>` : ''}
         <div class="overlay">
           <div class="tag">${esc(c.tag)}</div>
           <div class="hl">${esc(c.headline)}</div>
@@ -184,7 +186,7 @@
     feed.querySelectorAll('.mute-btn').forEach((b) => b.addEventListener('click', () => {
       muted = !muted;
       feed.querySelectorAll('video').forEach((v) => { v.muted = muted; });
-      feed.querySelectorAll('.mute-btn').forEach((x) => { x.textContent = muted ? '🔇' : '🔊'; });
+      feed.querySelectorAll('.mute-btn').forEach((x) => { x.innerHTML = toolkitIcon(muted ? 'volume-x' : 'volume-2', 22); });
     }));
 
     // Play only the clip that's on screen, like a TikTok feed

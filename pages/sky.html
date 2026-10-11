@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sun &amp; Moon — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Sun &amp; Moon — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -35,7 +36,7 @@
     <label for="city-input">Location</label>
     <div class="loc-row">
       <input type="text" id="city-input" placeholder="City, state or country">
-      <button class="btn secondary" id="locate-btn" style="flex-shrink:0;">📍 Use my location</button>
+      <button class="btn secondary" id="locate-btn" style="flex-shrink:0;"><span data-icon="map-pin" data-size="18"></span>&nbsp;Use my location</button>
     </div>
     <button class="btn block" id="lookup-btn">Look up</button>
     <div class="helper-text" id="loc-status" style="margin-top:10px; margin-bottom:0;"></div>
@@ -72,6 +73,7 @@
 </main>
 
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script>
   const cityInput = document.getElementById('city-input');
   const statusEl = document.getElementById('loc-status');

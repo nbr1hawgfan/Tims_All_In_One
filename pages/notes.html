@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Notes — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Notes — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -49,7 +50,7 @@
     <img id="photo-preview" class="photo-preview" style="display:none;">
     <div class="btn-row" style="margin-bottom:16px;">
       <label class="btn secondary" style="flex:1; text-align:center;">
-        📷 Add photo
+        <span data-icon="camera" data-size="18"></span>&nbsp;Add photo
         <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none;">
       </label>
       <button class="btn secondary" id="remove-photo-btn" style="display:none;">Remove photo</button>
@@ -65,6 +66,7 @@
 
 <script src="../js/db.js"></script>
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script>
   let editingId = null;
   let currentPhoto = null;
@@ -155,7 +157,7 @@
     const listEl = document.getElementById('notes-list');
     listEl.innerHTML = '';
     if (notes.length === 0) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><p>No notes yet.</p><p>Tap "New note" to add one.</p></div>`;
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="notebook-pen"></span></div><p>No notes yet.</p><p>Tap "New note" to add one.</p></div>`;
       return;
     }
     notes.forEach((note) => {

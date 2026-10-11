@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Personal Toolkit</title>
+<title>Jennings Hub</title>
 <meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="css/style.css">
 <script src="js/boot.js"></script>
 <style>
@@ -17,7 +18,9 @@
 
   /* greeting */
   .hello { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-  .hello .date { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+  .hello .brand { display: flex; align-items: center; gap: 7px; font-family: var(--font-display); font-weight: 800; font-size: 0.82rem; letter-spacing: 0.01em; color: var(--text); margin-bottom: 8px; }
+  .hello .brand img { width: 22px; height: 22px; border-radius: 6px; }
+  .hello .date { margin-top: 4px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
   .hello h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.03em; margin: 2px 0 0; color: var(--text); }
   .round-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0; transition: transform 0.12s ease; }
   .round-btn:active { transform: scale(0.92); }
@@ -94,8 +97,9 @@
 <main class="home">
   <div class="hello">
     <div>
-      <div class="date" id="today"></div>
+      <div class="brand"><img src="icons/icon-192.png" alt="">Jennings Hub</div>
       <h1 id="greeting">Hello</h1>
+      <div class="date" id="today"></div>
     </div>
     <a href="pages/settings.html" class="round-btn" aria-label="Settings" data-icon="settings" data-size="20"></a>
   </div>
@@ -170,6 +174,9 @@
       ['News', 'news.html', 'newspaper', 'headlines'],
     ] },
     { title: 'Family', color: 'family', apps: [
+      ['Family Hub', 'family.html', 'users', 'family today overview'],
+      ['Calendar', 'family-calendar.html', 'calendar-days', 'family calendar events schedule school sports cheer practice'],
+      ['Tasks', 'family-tasks.html', 'list-checks', 'chores to do tasks home'],
       ['Family List', 'family-list.html', 'shopping-basket', 'shared grocery shopping list family'],
       ['Birthdays', 'birthdays.html', 'cake', 'birthdays anniversaries dates family'],
     ] },
@@ -183,7 +190,7 @@
       ['Converter', 'convert.html', 'ruler', 'unit weight length measure'],
       ['Tip', 'tip.html', 'hand-coins', 'tip split bill'],
       ['Translator', 'translate.html', 'languages', 'translate language spanish'],
-      ['Calendar', 'calendar.html', 'calendar-days', 'perpetual day of week date'],
+      ['Day Finder', 'calendar.html', 'calendar-clock', 'perpetual calendar day of week date between'],
       ['Age', 'age.html', 'calendar-heart', 'birthday age calculator'],
       ['Currency', 'currency.html', 'arrow-right-left', 'exchange money rates'],
       ['Sun & Moon', 'sky.html', 'sunrise', 'sunrise sunset moon phase'],

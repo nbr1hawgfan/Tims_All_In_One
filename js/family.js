@@ -149,3 +149,125 @@ function familyDaysLabel(days) {
   if (days < 14) return 'next week';
   return `in ${days} days`;
 }
+
+// ---------- Family calendar & tasks helpers ----------
+const FAMILY_CATEGORIES = {
+  school:      { label: 'School',      icon: 'notebook-pen', color: '#4c95ff' },
+  sports:      { label: 'Sports',      icon: 'goal',         color: '#ff6a45' },
+  cheer:       { label: 'Cheer',       icon: 'sparkles',     color: '#ff5fb0' },
+  appointment: { label: 'Appointment', icon: 'heart-pulse',  color: '#36c9a0' },
+  family:      { label: 'Family',      icon: 'house',        color: '#f5b83d' },
+  work:        { label: 'Work',        icon: 'landmark',     color: '#94a0b2' },
+  other:       { label: 'Other',       icon: 'star',         color: '#9b7bff' },
+};
+const FAMILY_PERSON_COLORS = ['#ff6a45', '#4c95ff', '#36c9a0', '#ff5fb0', '#f5b83d', '#9b7bff', '#3cc8e8', '#ff8f3d', '#7bd35a', '#e05c8a'];
+
+function familyPersonColor(name) {
+  const s = String(name || '').trim().toLowerCase();
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return FAMILY_PERSON_COLORS[h % FAMILY_PERSON_COLORS.length];
+}
+function familyPersonChip(name, small) {
+  const c = familyPersonColor(name);
+  return `<span class="who-chip${small ? ' sm' : ''}" style="--pc:${c}">${toolkitEscapeHtml(name)}</span>`;
+}
+
+function familyYmd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function familyParseYmd(s) {
+  const [y, m, d] = String(s).split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function familyTimeLabel(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const d = new Date(2000, 0, 1, h, m);
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(':00', '');
+}
+
+// All occurrences of the events between two dates (inclusive), sorted by date then time
+function familyOccurrences(events, fromYmd, toYmd) {
+  const out = [];
+  (events || []).forEach((e) => {
+    if (!e.repeat) {
+      if (e.date >= fromYmd && e.date <= toYmd) out.push({ ev: e, date: e.date });
+      return;
+    }
+    const start = e.date > fromYmd ? e.date : fromYmd;
+    const end = e.until && e.until < toYmd ? e.until : toYmd;
+    if (start > end) return;
+    const d = familyParseYmd(start), last = familyParseYmd(end);
+    const days = e.days && e.days.length ? e.days : [familyParseYmd(e.date).getDay()];
+    for (let guard = 0; d <= last && guard < 800; guard++) {
+      const ymd = familyYmd(d);
+      if (days.includes(d.getDay()) && !(e.skip || []).includes(ymd)) out.push({ ev: e, date: ymd });
+      d.setDate(d.getDate() + 1);
+    }
+  });
+  out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.ev.start || '') < (b.ev.start || '') ? -1 : (a.ev.start || '') > (b.ev.start || '') ? 1 : 0));
+  return out;
+}
+
+function familyDayLabel(ymd) {
+  const today = familyYmd(new Date());
+  const tmr = familyYmd(new Date(Date.now() + 86400000));
+  if (ymd === today) return 'Today';
+  if (ymd === tmr) return 'Tomorrow';
+  const d = familyParseYmd(ymd);
+  const diff = Math.round((d - familyParseYmd(today)) / 86400000);
+  return d.toLocaleDateString(undefined, diff > 0 && diff < 7 ? { weekday: 'long' } : { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// Everyone's names seen anywhere (players + event/task tags), for the "who" pickers
+function familyKnownPeople(events, tasks, extra) {
+  const seen = {}, out = [];
+  const add = (n) => { const k = String(n || '').trim(); if (k && !seen[k.toLowerCase()]) { seen[k.toLowerCase()] = 1; out.push(k); } };
+  (events || []).forEach((e) => (e.who || []).forEach(add));
+  (tasks || []).forEach((t) => add(t.who));
+  (extra || []).forEach(add);
+  return out.sort((a, b) => a.localeCompare(b));
+}
+
+// A .ics file the phone's calendar app can import (repeats and skipped dates included)
+function familyIcs(e) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const compact = (ymd) => ymd.replace(/-/g, '');
+  const esc = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/([,;])/g, '\\$1');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Jennings Hub//Family Calendar//EN', 'BEGIN:VEVENT',
+    `UID:${e.id}@jennings-hub`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '')}`, `SUMMARY:${esc(e.title)}${e.who && e.who.length ? esc(' (' + e.who.join(', ') + ')') : ''}`];
+  if (e.start) {
+    lines.push(`DTSTART:${compact(e.date)}T${e.start.replace(':', '')}00`);
+    lines.push(`DTEND:${compact(e.date)}T${(e.end || (() => { const [h, m] = e.start.split(':').map(Number); return pad(Math.min(23, h + 1)) + ':' + pad(m); })()).replace(':', '')}00`);
+  } else {
+    const next = familyParseYmd(e.date); next.setDate(next.getDate() + 1);
+    lines.push(`DTSTART;VALUE=DATE:${compact(e.date)}`, `DTEND;VALUE=DATE:${compact(familyYmd(next))}`);
+  }
+  if (e.repeat === 'weekly') {
+    const code = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+    lines.push(`RRULE:FREQ=WEEKLY;BYDAY=${(e.days && e.days.length ? e.days : [familyParseYmd(e.date).getDay()]).map((d) => code[d]).join(',')}${e.until ? ';UNTIL=' + compact(e.until) + 'T235959' : ''}`);
+    (e.skip || []).forEach((s) => lines.push(e.start ? `EXDATE:${compact(s)}T${e.start.replace(':', '')}00` : `EXDATE;VALUE=DATE:${compact(s)}`));
+  }
+  if (e.location) lines.push(`LOCATION:${esc(e.location)}`);
+  if (e.notes) lines.push(`DESCRIPTION:${esc(e.notes)}`);
+  lines.push('END:VEVENT', 'END:VCALENDAR');
+  return lines.join('\r\n');
+}
+function familyDownloadIcs(e) {
+  const blob = new Blob([familyIcs(e)], { type: 'text/calendar' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (e.title || 'event').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') + '.ics';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+// Shared cache so the Family tab and calendar open instantly
+const FAMILY_HUB_CACHE = 'toolkit-family-hub-cache';
+function familyHubCache(v) {
+  if (v === undefined) { try { return JSON.parse(familyLs(FAMILY_HUB_CACHE)) || null; } catch (e) { return null; } }
+  familyLs(FAMILY_HUB_CACHE, JSON.stringify(v));
+  return v;
+}

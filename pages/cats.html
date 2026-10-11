@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Cats &amp; Rainbows — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Cats &amp; Rainbows — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -65,7 +66,7 @@
   <div class="fun-sub">Cats, facts, puns, and a little chaos.</div>
 
   <div class="toggle-row-fun">
-    <button id="mode-photo" class="active">📷 Photo</button>
+    <button id="mode-photo" class="active"><span data-icon="camera" data-size="18"></span>&nbsp;Photo</button>
     <button id="mode-gif">🎞️ GIF</button>
     <button id="mode-rainbow">🌈 Rainbow mode</button>
   </div>
@@ -90,6 +91,7 @@
 <div id="confetti-layer"></div>
 
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script>
   let catMode = 'photo'; // 'photo' | 'gif'
   let rainbowMode = false;

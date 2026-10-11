@@ -1,10 +1,11 @@
 /**
- * Family Hub — backend for the All-In-One app's shared family features:
- * Pick'em, the Family grocery list, Birthdays & Anniversaries, and Daily Trivia.
+ * Family Hub — backend for Jennings Hub's shared family features:
+ * Pick'em, Family Calendar, Home Tasks, the Family grocery list,
+ * Birthdays & Anniversaries, and Daily Trivia.
  *
  * Lives in a Google Sheet (Extensions → Apps Script). The Sheet is the
- * database: Players, Picks, Games, List, Dates, Trivia and TriviaScores tabs
- * are created automatically. Everyone signs in once with the group code,
+ * database: Players, Picks, Games, List, Dates, Events, Tasks, Trivia and
+ * TriviaScores tabs are created automatically. Everyone signs in once with the group code,
  * their name and a 4-digit PIN — the same sign-in works for every feature.
  *
  * Script Properties (Project Settings → Script Properties):
@@ -31,6 +32,8 @@ const SHEETS = {
   Games:   ['weekKey', 'gameId', 'json', 'updated'],
   List:    ['id', 'text', 'done', 'addedBy', 'added', 'doneBy', 'updated'],
   Dates:   ['id', 'name', 'kind', 'month', 'day', 'year', 'addedBy', 'added'],
+  Events:  ['id', 'title', 'date', 'start', 'end', 'who', 'category', 'location', 'notes', 'repeat', 'days', 'until', 'skip', 'addedBy', 'updated'],
+  Tasks:   ['id', 'title', 'who', 'due', 'done', 'doneBy', 'repeat', 'addedBy', 'updated', 'lastDone'],
   Trivia:  ['dateKey', 'json', 'created'],
   TriviaScores: ['dateKey', 'playerKey', 'score', 'total', 'answers', 'submitted'],
 };
@@ -535,6 +538,15 @@ const FAMILY_ACTIONS = {
   triviaSubmit: triviaSubmit_,
   triviaBoard: triviaBoard_,
   triviaPractice: triviaPractice_,
+  calGet: function (req, player) { return calOut_(); },
+  calSave: calSave_,
+  calDelete: calDelete_,
+  calSkip: calSkip_,
+  tasksGet: function (req, player) { return tasksOut_(); },
+  taskSave: taskSave_,
+  taskToggle: taskToggle_,
+  taskDelete: taskDelete_,
+  hubToday: hubToday_,
 };
 
 function newId_() { return Utilities.getUuid().replace(/-/g, '').slice(0, 10); }
@@ -749,4 +761,181 @@ function triviaBoard_(req, player) {
 
 function triviaPractice_(req, player) {
   return { ok: true, questions: fetchTrivia_(10) };
+}
+
+// ============================================================
+// FAMILY CALENDAR & HOME TASKS
+// ============================================================
+const EVENT_CATEGORIES = ['school', 'sports', 'cheer', 'appointment', 'family', 'work', 'other'];
+const TASK_REPEATS = ['', 'daily', 'weekly', 'monthly'];
+
+function isDate_(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !isNaN(new Date(String(s) + 'T12:00:00Z').getTime()); }
+function isTime_(s) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(s || '')); }
+function whoList_(w) {
+  const arr = Array.isArray(w) ? w : String(w || '').split(',');
+  const out = [];
+  const seen = {};
+  arr.map(function (x) { return clean_(x, 24); }).filter(Boolean).forEach(function (x) { if (!seen[x.toLowerCase()]) { seen[x.toLowerCase()] = 1; out.push(x); } });
+  return out.slice(0, 8);
+}
+function cellDate_(v) {
+  // Sheets may hand back a Date if a cell was ever edited by hand
+  if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
+  return String(v || '');
+}
+
+function eventFromRow_(r) {
+  return {
+    id: String(r[0]), title: String(r[1]), date: cellDate_(r[2]), start: String(r[3] || ''), end: String(r[4] || ''),
+    who: String(r[5] || '') ? String(r[5]).split(',') : [], category: String(r[6] || 'other'), location: String(r[7] || ''),
+    notes: String(r[8] || ''), repeat: String(r[9] || ''), days: String(r[10] || '') ? String(r[10]).split(',').map(Number) : [],
+    until: cellDate_(r[11]), skip: String(r[12] || '') ? String(r[12]).split(',') : [], addedBy: String(r[13] || ''), updated: String(r[14] || ''),
+  };
+}
+
+function calOut_() {
+  // Drop one-time events more than 60 days old so the list stays light
+  const cutoff = Utilities.formatDate(new Date(Date.now() - 60 * 86400000), TZ, 'yyyy-MM-dd');
+  const events = rows_('Events').filter(function (r) { return r[0]; }).map(eventFromRow_).filter(function (e) {
+    if (e.repeat) return !e.until || e.until >= cutoff;
+    return e.date >= cutoff;
+  });
+  return { ok: true, events: events };
+}
+
+function calSave_(req, player) {
+  const title = clean_(req.title, 60);
+  if (!title) throw new Error('Give the event a name.');
+  if (!isDate_(req.date)) throw new Error('Pick a date.');
+  const start = req.start ? String(req.start) : '', end = req.end ? String(req.end) : '';
+  if (start && !isTime_(start)) throw new Error('Start time doesn’t look right.');
+  if (end && !isTime_(end)) throw new Error('End time doesn’t look right.');
+  if (start && end && end <= start) throw new Error('End time should be after the start time.');
+  const category = EVENT_CATEGORIES.indexOf(req.category) >= 0 ? req.category : 'other';
+  const repeat = req.repeat === 'weekly' ? 'weekly' : '';
+  let days = [];
+  if (repeat) {
+    days = (Array.isArray(req.days) ? req.days : []).map(Number).filter(function (d) { return d >= 0 && d <= 6; });
+    days = days.filter(function (d, i) { return days.indexOf(d) === i; }).sort();
+    if (!days.length) days = [new Date(req.date + 'T12:00:00Z').getUTCDay()];
+  }
+  const until = repeat && req.until ? String(req.until) : '';
+  if (until && (!isDate_(until) || until < req.date)) throw new Error('“Repeat until” should be after the first date.');
+  const row = [title, req.date, start, end, whoList_(req.who).join(','), category, clean_(req.location, 80), clean_(req.notes, 300), repeat, days.join(','), until];
+  return withLock_(function () {
+    const sh = sheet_('Events');
+    const hit = req.id ? findRow_('Events', req.id) : null;
+    if (hit) {
+      sh.getRange(hit.row, 2, 1, 11).setNumberFormat('@').setValues([row]);
+      sh.getRange(hit.row, 15).setValue(nowIso_());
+    } else {
+      sh.getRange(sh.getLastRow() + 1, 1, 1, 15).setNumberFormat('@').setValues([[newId_()].concat(row, ['', player.name, nowIso_()])]);
+    }
+    return calOut_();
+  });
+}
+
+function calDelete_(req, player) {
+  return withLock_(function () {
+    const hit = findRow_('Events', req.id);
+    if (hit) sheet_('Events').deleteRow(hit.row);
+    return calOut_();
+  });
+}
+
+// Remove one date from a repeating event ("practice is canceled this Tuesday")
+function calSkip_(req, player) {
+  if (!isDate_(req.date)) throw new Error('Missing date.');
+  return withLock_(function () {
+    const hit = findRow_('Events', req.id);
+    if (hit) {
+      const skip = String(hit.values[12] || '') ? String(hit.values[12]).split(',') : [];
+      if (skip.indexOf(req.date) < 0) skip.push(req.date);
+      sheet_('Events').getRange(hit.row, 13, 1, 3).setNumberFormat('@').setValues([[skip.slice(-60).join(','), hit.values[13], nowIso_()]]);
+    }
+    return calOut_();
+  });
+}
+
+function taskFromRow_(r) {
+  return { id: String(r[0]), title: String(r[1]), who: String(r[2] || ''), due: cellDate_(r[3]), done: String(r[4]) === '1', doneBy: String(r[5] || ''), repeat: String(r[6] || ''), addedBy: String(r[7] || ''), updated: String(r[8] || ''), lastDone: String(r[9] || '') };
+}
+
+function tasksOut_() {
+  const tasks = rows_('Tasks').filter(function (r) { return r[0]; }).map(taskFromRow_);
+  return { ok: true, tasks: tasks };
+}
+
+function taskSave_(req, player) {
+  const title = clean_(req.title, 80);
+  if (!title) throw new Error('What needs doing?');
+  const due = req.due ? String(req.due) : '';
+  if (due && !isDate_(due)) throw new Error('Due date doesn’t look right.');
+  const repeat = TASK_REPEATS.indexOf(req.repeat) >= 0 ? req.repeat : '';
+  if (repeat && !due) throw new Error('Repeating tasks need a due date to start from.');
+  const who = clean_(req.who, 24);
+  return withLock_(function () {
+    const sh = sheet_('Tasks');
+    const hit = req.id ? findRow_('Tasks', req.id) : null;
+    if (hit) {
+      sh.getRange(hit.row, 2, 1, 3).setNumberFormat('@').setValues([[title, who, due]]);
+      sh.getRange(hit.row, 7).setNumberFormat('@').setValue(repeat);
+      sh.getRange(hit.row, 9).setValue(nowIso_());
+    } else {
+      sh.getRange(sh.getLastRow() + 1, 1, 1, 10).setNumberFormat('@').setValues([[newId_(), title, who, due, '', '', repeat, player.name, nowIso_(), '']]);
+    }
+    return tasksOut_();
+  });
+}
+
+function nextDue_(due, repeat) {
+  const d = new Date(due + 'T12:00:00Z');
+  const today = new Date(todayKey_() + 'T12:00:00Z');
+  const step = function () {
+    if (repeat === 'daily') d.setUTCDate(d.getUTCDate() + 1);
+    else if (repeat === 'weekly') d.setUTCDate(d.getUTCDate() + 7);
+    else if (repeat === 'monthly') d.setUTCMonth(d.getUTCMonth() + 1);
+  };
+  step();
+  // If it was overdue, jump ahead to the next date that isn't in the past
+  let guard = 0;
+  while (d < today && guard++ < 400) step();
+  return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd');
+}
+
+// Checking off a repeating task rolls it to its next due date instead of finishing it
+function taskToggle_(req, player) {
+  return withLock_(function () {
+    const hit = findRow_('Tasks', req.id);
+    if (!hit) return tasksOut_();
+    const t = taskFromRow_(hit.values);
+    const sh = sheet_('Tasks');
+    if (req.done && t.repeat && t.due) {
+      sh.getRange(hit.row, 4, 1, 3).setNumberFormat('@').setValues([[nextDue_(t.due, t.repeat), '', player.name]]);
+      sh.getRange(hit.row, 9, 1, 2).setValues([[nowIso_(), player.name + ' · ' + todayKey_()]]);
+      const out = tasksOut_();
+      out.rolled = true;
+      return out;
+    }
+    sh.getRange(hit.row, 5, 1, 2).setNumberFormat('@').setValues([[req.done ? '1' : '', req.done ? player.name : '']]);
+    sh.getRange(hit.row, 9).setValue(nowIso_());
+    return tasksOut_();
+  });
+}
+
+function taskDelete_(req, player) {
+  return withLock_(function () {
+    const hit = findRow_('Tasks', req.id);
+    if (hit) sheet_('Tasks').deleteRow(hit.row);
+    return tasksOut_();
+  });
+}
+
+// Everything the Family tab needs in one trip
+function hubToday_(req, player) {
+  return {
+    ok: true, player: player.name, group: groupName_(), today: todayKey_(),
+    events: calOut_().events, tasks: tasksOut_().tasks, dates: datesOut_().dates,
+    listOpen: listOut_().items.filter(function (i) { return !i.done; }).length,
+  };
 }

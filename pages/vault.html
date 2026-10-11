@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Secure Logins — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Secure Logins — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -30,7 +31,7 @@
 
   <!-- Locked state -->
   <div id="lock-view" class="lock-screen">
-    <div class="lock-icon">🔒</div>
+    <div class="lock-icon"><span data-icon="lock" data-size="28"></span></div>
     <h3 id="lock-title">Vault locked</h3>
     <p class="helper-text" id="lock-sub" style="text-align:center;">Enter your vault passphrase to continue.</p>
     <input type="password" id="passphrase-input" placeholder="Passphrase" style="text-align:center;">
@@ -59,7 +60,7 @@
     <label for="login-password">Password</label>
     <div class="pw-reveal">
       <input type="password" id="login-password" placeholder="Password">
-      <button class="icon-btn" id="toggle-pw-btn" type="button" aria-label="Show password">👁</button>
+      <button class="icon-btn" id="toggle-pw-btn" type="button" aria-label="Show password"><span data-icon="eye" data-size="18"></span></button>
     </div>
     <label for="login-notes">Notes (optional)</label>
     <textarea id="login-notes" rows="2" placeholder="Security questions, PIN, etc."></textarea>
@@ -73,6 +74,7 @@
 
 <script src="../js/db.js"></script>
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script src="../js/secure.js"></script>
 <script>
   let editingId = null;
@@ -201,7 +203,7 @@
     const listEl = document.getElementById('logins-list');
     listEl.innerHTML = '';
     if (all.length === 0) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🔒</div><p>No logins saved yet.</p><p>Tap "New login" to add one.</p></div>`;
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="lock"></span></div><p>No logins saved yet.</p><p>Tap "New login" to add one.</p></div>`;
       return;
     }
     for (const record of all) {
@@ -215,7 +217,7 @@
           <div class="row-title">${toolkitEscapeHtml(decrypted.site)}</div>
           <div class="row-sub">${toolkitEscapeHtml(decrypted.username || 'No username saved')}</div>
         </div>
-        <button class="icon-btn" data-copy aria-label="Copy password">📋</button>
+        <button class="icon-btn" data-copy aria-label="Copy password"><span data-icon="copy" data-size="18"></span></button>
       `;
       row.querySelector('[data-copy]').addEventListener('click', async (e) => {
         e.stopPropagation();

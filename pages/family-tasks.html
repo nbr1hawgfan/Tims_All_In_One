@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Home Tasks — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
+<style>
+  .quick-add { display: flex; gap: 8px; margin-bottom: 12px; }
+  .quick-add input { margin: 0; }
+  .quick-add .btn { flex-shrink: 0; padding: 0 14px; }
+  .people { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 8px; padding: 0 16px 4px; scrollbar-width: none; }
+  .people::-webkit-scrollbar { display: none; }
+  .people button { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+  .people button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc, var(--text-muted)); }
+  .people button.on { border-color: var(--pc, var(--primary-light)); background: color-mix(in srgb, var(--pc, var(--c1)) 20%, transparent); }
+  .sec-h { display: flex; align-items: center; justify-content: space-between; margin: 16px 2px 8px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+  .sec-h.over { color: var(--danger); }
+  .sec-h button { background: none; border: 0; color: var(--ink-accent); font-weight: 700; font-size: 0.74rem; cursor: pointer; text-transform: none; letter-spacing: 0; }
+  .progress-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 18px; margin-bottom: 14px; color: #fff; background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 12px 26px -14px var(--c2); }
+  .ring { width: 54px; height: 54px; flex-shrink: 0; }
+  .ring circle { fill: none; stroke-width: 6; }
+  .progress-card b { font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; display: block; }
+  .progress-card span { font-size: 0.8rem; opacity: 0.9; }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="family.html" class="back-link" aria-label="Back">←</a>
+  <div><h1>Home Tasks</h1></div>
+</header>
+
+<main class="shell">
+  <div id="gate"></div>
+  <section id="app" class="hidden">
+    <div class="quick-add">
+      <input type="text" id="quick" placeholder="Add a task…" maxlength="80" enterkeyhint="done" autocomplete="off">
+      <button class="btn" id="quick-btn" aria-label="Add with details"><span data-icon="plus" data-size="20"></span></button>
+    </div>
+    <div class="people" id="people"></div>
+    <div id="body"></div>
+  </section>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
+<script src="../js/pickem-config.js"></script>
+<script src="../js/family.js"></script>
+<script src="../js/family-ui.js"></script>
+<script>
+  const esc = toolkitEscapeHtml;
+  const cache = familyHubCache() || {};
+  let tasks = cache.tasks || [];
+  let events = cache.events || [];
+  let person = '';
+  let showDone = false;
+  let session = null;
+
+  const people = () => familyKnownPeople(events, tasks, session ? [session.name] : []);
+
+  function renderPeople() {
+    const list = people();
+    const host = document.getElementById('people');
+    host.innerHTML = `<button data-p="" class="${!person ? 'on' : ''}">Everyone</button>` + list.map((p) =>
+      `<button data-p="${esc(p)}" style="--pc:${familyPersonColor(p)}" class="${person.toLowerCase() === p.toLowerCase() ? 'on' : ''}"><span class="dot"></span>${esc(p)}${session && p.toLowerCase() === session.name.toLowerCase() ? ' (me)' : ''}</button>`).join('');
+    host.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { person = b.dataset.p; render(); }));
+  }
+
+  function render() {
+    renderPeople();
+    const host = document.getElementById('body');
+    const today = familyYmd(new Date());
+    const week = familyYmd(new Date(Date.now() + 7 * 86400000));
+    const mine = tasks.filter((t) => !person || (t.who || '').toLowerCase() === person.toLowerCase());
+    const open = mine.filter((t) => !t.done);
+    const done = mine.filter((t) => t.done);
+    const byDue = (a, b) => (a.due || '9999') < (b.due || '9999') ? -1 : (a.due || '9999') > (b.due || '9999') ? 1 : a.title.localeCompare(b.title);
+    const groups = [
+      ['Overdue', open.filter((t) => t.due && t.due < today), 'over'],
+      ['Today', open.filter((t) => t.due === today), ''],
+      ['This week', open.filter((t) => t.due && t.due > today && t.due <= week), ''],
+      ['Later', open.filter((t) => t.due && t.due > week), ''],
+      ['Anytime', open.filter((t) => !t.due), ''],
+    ];
+    const todayCount = open.filter((t) => t.due && t.due <= today).length;
+    const doneToday = tasks.filter((t) => (t.done && (t.updated || '').slice(0, 10) === new Date().toISOString().slice(0, 10)) || (t.lastDone || '').endsWith(today)).filter((t) => !person || (t.who || '').toLowerCase() === person.toLowerCase()).length;
+    const total = todayCount + doneToday;
+    const pct = total ? doneToday / total : 1;
+    let html = `
+      <div class="progress-card">
+        <svg class="ring" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" stroke="rgba(255,255,255,0.28)"/><circle cx="27" cy="27" r="23" stroke="#fff" stroke-linecap="round" stroke-dasharray="${(pct * 144.5).toFixed(1)} 144.5" transform="rotate(-90 27 27)"/></svg>
+        <div><b>${todayCount ? `${todayCount} to do today` : 'All caught up!'}</b><span>${doneToday ? `${doneToday} done today · ` : ''}${open.length} open ${open.length === 1 ? 'task' : 'tasks'}${person ? ' for ' + esc(person) : ''}</span></div>
+      </div>`;
+    if (!mine.length) {
+      html += `<div class="empty-state"><div class="empty-icon"><span data-icon="list-checks"></span></div><p>${person ? `No tasks for ${esc(person)}.` : 'No tasks yet.'}</p><p>Add chores and to-dos above — assign them, set a due date, make them repeat.</p></div>`;
+    }
+    groups.forEach(([label, list, cls]) => {
+      if (!list.length) return;
+      html += `<div class="sec-h ${cls}"><span>${label} · ${list.length}</span></div>` + list.sort(byDue).map(familyTaskRow).join('');
+    });
+    if (done.length) {
+      html += `<div class="sec-h"><span>Done · ${done.length}</span><button id="toggle-done">${showDone ? 'Hide' : 'Show'}</button></div>`;
+      if (showDone) html += done.map(familyTaskRow).join('');
+    }
+    host.innerHTML = html;
+    host.querySelectorAll('.tk-row').forEach((row) => {
+      const t = tasks.find((x) => x.id === row.dataset.id);
+      row.querySelector('.ck').addEventListener('click', () => toggle(t));
+      row.querySelector('.bd').addEventListener('click', () => edit(t));
+    });
+    const td = host.querySelector('#toggle-done');
+    if (td) td.addEventListener('click', () => { showDone = !showDone; render(); });
+  }
+
+  function save(r) {
+    tasks = r.tasks;
+    familyHubCache(Object.assign(familyHubCache() || {}, { tasks }));
+    render();
+  }
+
+  async function toggle(t) {
+    const before = JSON.parse(JSON.stringify(tasks));
+    t.done = !t.done; render();
+    try {
+      const r = await familyApi('taskToggle', { id: t.id, done: t.done });
+      save(r);
+      if (r.rolled) toolkitToast(`Nice! Next one due ${familyDayLabel(r.tasks.find((x) => x.id === t.id).due)}`);
+    } catch (e) {
+      tasks = before; render();
+      if (familyIsAuthError(e.message)) return start();
+      toolkitToast(e.message, { danger: true });
+    }
+  }
+
+  function edit(t) {
+    familyEditTask(t, {
+      people: people(),
+      onSave: async (p) => { save(await familyApi('taskSave', p)); toolkitToast(t && t.id ? 'Saved' : 'Task added'); },
+      onDelete: async (task) => { save(await familyApi('taskDelete', { id: task.id })); toolkitToast('Deleted'); },
+    });
+  }
+
+  async function quickAdd() {
+    const input = document.getElementById('quick');
+    const title = input.value.trim();
+    if (!title) { edit({ who: person }); return; }
+    input.value = '';
+    try { save(await familyApi('taskSave', { title, who: person })); toolkitToast('Task added — tap it to set a due date'); }
+    catch (e) { input.value = title; toolkitToast(e.message, { danger: true }); }
+  }
+  document.getElementById('quick-btn').addEventListener('click', () => {
+    const v = document.getElementById('quick').value.trim();
+    if (v) quickAdd(); else edit({ who: person });
+  });
+  document.getElementById('quick').addEventListener('keydown', (e) => { if (e.key === 'Enter') quickAdd(); });
+
+  async function refresh() {
+    try {
+      const r = await familyApi('hubToday');
+      tasks = r.tasks; events = r.events;
+      familyHubCache(r); render();
+    } catch (e) {
+      if (familyIsAuthError(e.message)) return start();
+      toolkitToast('Offline — showing the last saved tasks', { danger: true });
+    }
+  }
+
+  function start() {
+    document.getElementById('app').classList.add('hidden');
+    familyGate(document.getElementById('gate'), (s) => {
+      session = s;
+      document.getElementById('gate').innerHTML = '';
+      document.getElementById('app').classList.remove('hidden');
+      render();
+      refresh();
+    }, { title: 'Sign in to the family tasks', blurb: 'Tasks are shared with your Pick\'em family group. Use the same group code, name and PIN.' });
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && familySession()) refresh(); });
+  start();
+</script>
+</body>
+</html>

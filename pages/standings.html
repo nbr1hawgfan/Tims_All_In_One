@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Standings — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Standings — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -51,6 +52,7 @@
 </main>
 
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script src="../js/sports-common.js"></script>
 <script>
   const esc = toolkitEscapeHtml;
@@ -108,7 +110,7 @@
     const data = await sportsGetJson(`${SPORTS_API_V2}/${L.sport}/${L.league}/standings`);
     if (lk !== league) return;
     const groups = collectGroups(data, []);
-    if (!groups.length) { body.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No standings yet — probably off-season.</p></div>`; return; }
+    if (!groups.length) { body.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="list-ordered"></span></div><p>No standings yet — probably off-season.</p></div>`; return; }
     const favs = sportsFavIds(lk);
     const cols = COLS[lk];
     body.innerHTML = '';
@@ -148,7 +150,7 @@
     if (lk !== league) return;
     const rankings = data.rankings || [];
     const poll = rankings.find((r) => /AP/i.test(r.name || r.shortName || '')) || rankings[0];
-    if (!poll || !(poll.ranks || []).length) { body.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No rankings posted right now.</p></div>`; return; }
+    if (!poll || !(poll.ranks || []).length) { body.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="list-ordered"></span></div><p>No rankings posted right now.</p></div>`; return; }
     const favs = sportsFavIds(lk);
     const others = (poll.others || []).slice(0, 10);
     body.innerHTML = `

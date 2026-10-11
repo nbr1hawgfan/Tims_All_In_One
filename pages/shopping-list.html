@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Shopping List — Personal Toolkit</title>
-<meta name="theme-color" content="#0a5870">
+<title>Shopping List — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/boot.js"></script>
 <style>
@@ -64,9 +65,9 @@
   <div class="row-list" id="shopping-list"></div>
 
   <div class="export-row">
-    <button class="btn secondary" id="share-btn">📤 Share</button>
-    <button class="btn secondary" id="print-btn">🖨️ Print</button>
-    <button class="btn secondary" id="copy-list-btn">📋 Copy</button>
+    <button class="btn secondary" id="share-btn"><span data-icon="share" data-size="18"></span>&nbsp;Share</button>
+    <button class="btn secondary" id="print-btn"><span data-icon="printer" data-size="18"></span>&nbsp;Print</button>
+    <button class="btn secondary" id="copy-list-btn"><span data-icon="copy" data-size="18"></span>&nbsp;Copy</button>
   </div>
 
   <button class="btn secondary block" id="clear-checked-btn">Clear checked items</button>
@@ -80,6 +81,7 @@
 
 <script src="../js/db.js"></script>
 <script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
 <script>
   const newItemEl = document.getElementById('new-item');
 
@@ -154,7 +156,7 @@
     const listEl = document.getElementById('shopping-list');
     listEl.innerHTML = '';
     if (items.length === 0) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🛒</div><p>Your list is empty.</p><p>Add items above, or mark a pantry item "running low" to send it here automatically.</p></div>`;
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="shopping-cart"></span></div><p>Your list is empty.</p><p>Add items above, or mark a pantry item "running low" to send it here automatically.</p></div>`;
       return;
     }
     items.forEach((item) => {

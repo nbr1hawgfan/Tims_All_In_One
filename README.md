@@ -287,6 +287,34 @@ Deploy**. That keeps the same web app URL, so nothing in the app changes.
 (If you instead make a *new* deployment, you'd have to paste the new URL into
 `js/pickem-config.js`.)
 
+## Gamecast, Preview, Leaders & the SEC hub
+
+- **Pick any day or week** — the Scores page has a bar under the league tabs:
+  NFL and college football move week by week (tap the middle to jump to any
+  week, including the playoffs); NBA, MLB and college basketball move day by
+  day (tap the middle for a date picker). "Today" / "This week" jumps back.
+- **Live situation on score cards** — down & distance, who has the ball and
+  the red zone for football; count, outs and runners on base for baseball;
+  plus the last play.
+- **Gamecast** (first tab during and after a game):
+  line score by quarter / inning in the header, live situation, a **win
+  probability** chart, and **play-by-play** — football shows every drive
+  (tap to open its plays), basketball and baseball show every play with a
+  "Scoring only" filter. Refreshes every 30 seconds while live.
+- **Preview** (before a game) / **Matchup** (after): ESPN's matchup predictor,
+  betting lines from several books, both teams' injury reports, last 5
+  results, season series, and venue / weather / officials.
+- **League Leaders** (`leaders.html`) — every stat category ESPN tracks for
+  each league; tap a player for their profile.
+- **SEC hub** (`sec.html`) — Football and Basketball:
+  - Standings (conference, overall, home, away, vs Top 25, points)
+  - **Team Stats**: all SEC teams side by side (points, points allowed,
+    yards, passing, rushing, turnover margin, 3rd-down %, sacks; basketball:
+    points, FG/3P/FT %, rebounds, assists, turnovers, steals, blocks). Tap a
+    column to sort; green = best in the SEC, red = last. Cached for 3 hours.
+  - SEC-only stat leaders, and this week's SEC games.
+  - Basketball fills in once the season starts in November.
+
 ## Fantasy Football (ESPN leagues)
 
 `pages/fantasy.html` — also reachable from the Sports Scores page. Enter the

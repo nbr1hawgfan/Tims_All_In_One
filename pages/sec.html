@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SEC — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
+<style>
+  .sec-hero { display: flex; align-items: center; gap: 14px; border-radius: 20px; padding: 16px; margin-bottom: 14px; color: #fff; background: linear-gradient(140deg, #1f3a8a, #0b1f4d 60%, #c8a24a 160%); box-shadow: 0 14px 28px -16px #1f3a8a; }
+  .sec-hero .badge { width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,0.14); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; letter-spacing: 0.04em; border: 1px solid rgba(255,255,255,0.25); }
+  .sec-hero b { font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; display: block; }
+  .sec-hero small { opacity: 0.85; font-size: 0.8rem; }
+  .sport-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); margin-bottom: 12px; }
+  .sport-switch button { padding: 9px; border-radius: 999px; border: 0; background: none; color: var(--text-muted); font-weight: 700; font-size: 0.86rem; cursor: pointer; }
+  .sport-switch button.on { background: var(--primary); color: #fff; }
+  .seg-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .seg-tabs button { flex: 1; padding: 9px 4px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: var(--font-display); font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+  .seg-tabs button.active { background: var(--primary); color: #fff; border-color: transparent; }
+  .tbl-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.sec { border-collapse: collapse; width: 100%; font-size: 0.8rem; }
+  table.sec th, table.sec td { padding: 9px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  table.sec tr:last-child td { border-bottom: 0; }
+  table.sec th { font-size: 0.64rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; position: sticky; top: 0; background: var(--surface); }
+  table.sec th.sortable { cursor: pointer; user-select: none; }
+  table.sec th.sorted { color: var(--ink-accent); }
+  table.sec td { font-family: var(--font-mono); }
+  table.sec th:first-child, table.sec td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+  table.sec td:first-child { font-family: var(--font-body); font-weight: 700; }
+  table.sec td:first-child a { display: flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; }
+  table.sec td:first-child img { width: 22px; height: 22px; object-fit: contain; }
+  table.sec .rk { font-family: var(--font-mono); color: var(--text-muted); font-size: 0.7rem; width: 16px; text-align: right; }
+  table.sec tr.fav td { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+  table.sec td.best { color: var(--success); font-weight: 800; }
+  table.sec td.worst { color: var(--danger); }
+  .note { font-size: 0.74rem; color: var(--text-muted); margin: 10px 2px 0; }
+  .g-card { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 11px 14px; margin-bottom: 8px; text-decoration: none; color: var(--text); }
+  .g-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+  .g-row img { width: 24px; height: 24px; object-fit: contain; }
+  .g-row .n { flex: 1; font-weight: 700; font-size: 0.9rem; }
+  .g-row .n small { font-family: var(--font-mono); color: var(--text-muted); font-size: 0.68rem; margin-right: 4px; font-weight: 600; }
+  .g-row .s { font-family: var(--font-mono); font-weight: 800; }
+  .g-row.lose { color: var(--text-muted); }
+  .g-st { font-size: 0.7rem; color: var(--text-muted); margin-top: 5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+  .g-st.live { color: var(--danger); }
+</style>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="sports.html" class="back-link" aria-label="Back">←</a>
+  <div><h1>SEC</h1></div>
+</header>
+
+<main class="shell">
+  <div id="nav-slot"></div>
+  <div class="sec-hero"><div class="badge">SEC</div><div><b>Southeastern Conference</b><small id="hero-sub">Standings, team stats &amp; leaders</small></div></div>
+  <div class="sport-switch" id="sport-switch">
+    <button data-s="ncaaf" class="on">Football</button>
+    <button data-s="ncaab">Basketball</button>
+  </div>
+  <div class="seg-tabs" id="tabs">
+    <button data-t="standings" class="active">Standings</button>
+    <button data-t="stats">Team Stats</button>
+    <button data-t="leaders">Leaders</button>
+    <button data-t="games">Games</button>
+  </div>
+  <div id="body"></div>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
+<script src="../js/sports-common.js"></script>
+<script>
+  const esc = toolkitEscapeHtml;
+  document.getElementById('nav-slot').replaceWith(sportsRenderNav('sec'));
+
+  // ESPN conference ids: SEC football = 8, SEC men's basketball = 23
+  const SEC_GROUP = { ncaaf: 8, ncaab: 23 };
+  const SPORT_KEY = 'sec-last-sport';
+  let sport;
+  try { sport = localStorage.getItem(SPORT_KEY); } catch (e) {}
+  if (!SEC_GROUP[sport]) sport = 'ncaaf';
+  let tab = 'standings';
+  const mem = {};               // cache per sport+tab
+  const leaderState = {};
+  const sortState = {};
+
+  // Season team-stat columns: [label, block ('team' | 'opp'), stat names to look for, higher is better]
+  const STAT_COLS = {
+    ncaaf: [
+      ['PPG', 'team', ['totalPointsPerGame'], true],
+      ['Opp PPG', 'opp', ['totalPointsPerGame'], false],
+      ['Yds/G', 'team', ['yardsPerGame', 'totalYardsPerGame'], true],
+      ['Pass/G', 'team', ['netPassingYardsPerGame', 'passingYardsPerGame'], true],
+      ['Rush/G', 'team', ['rushingYardsPerGame'], true],
+      ['Opp Yds/G', 'opp', ['yardsPerGame', 'totalYardsPerGame'], false],
+      ['TO +/-', 'team', ['turnOverDifferential'], true],
+      ['3rd Dn %', 'team', ['thirdDownConvPct'], true],
+      ['Sacks', 'team', ['sacks'], true, 'defensive'],
+    ],
+    ncaab: [
+      ['PPG', 'team', ['avgPoints'], true],
+      ['Opp PPG', 'opp', ['avgPoints'], false],
+      ['FG %', 'team', ['fieldGoalPct'], true],
+      ['3P %', 'team', ['threePointFieldGoalPct', 'threePointPct'], true],
+      ['FT %', 'team', ['freeThrowPct'], true],
+      ['Reb', 'team', ['avgRebounds'], true],
+      ['Ast', 'team', ['avgAssists'], true],
+      ['TO', 'team', ['avgTurnovers'], false],
+      ['Stl', 'team', ['avgSteals'], true],
+      ['Blk', 'team', ['avgBlocks'], true],
+    ],
+  };
+
+  document.querySelectorAll('#sport-switch button').forEach((b) => b.addEventListener('click', () => {
+    sport = b.dataset.s;
+    try { localStorage.setItem(SPORT_KEY, sport); } catch (e) {}
+    document.querySelectorAll('#sport-switch button').forEach((x) => x.classList.toggle('on', x === b));
+    render();
+  }));
+  document.querySelectorAll('#sport-switch button').forEach((x) => x.classList.toggle('on', x.dataset.s === sport));
+  document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
+    tab = b.dataset.t;
+    document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('active', x === b));
+    render();
+  }));
+
+  async function once(key, fn) {
+    if (!mem[key]) mem[key] = fn().catch((e) => { delete mem[key]; throw e; });
+    return mem[key];
+  }
+
+  async function standings(sp) {
+    const L = SPORTS_LEAGUES[sp];
+    return once('st-' + sp, async () => {
+      const data = await sportsGetJson(`${SPORTS_API_V2}/${L.sport}/${L.league}/standings?group=${SEC_GROUP[sp]}`);
+      const out = [];
+      const walk = (n) => { if (n.standings && n.standings.entries) out.push(...n.standings.entries); (n.children || []).forEach(walk); };
+      walk(data);
+      return out;
+    });
+  }
+
+  const statOf = (e, type) => (e.stats || []).find((x) => x.type === type || x.name === type);
+
+  async function render() {
+    const body = document.getElementById('body');
+    const sp = sport, t = tab;
+    body.innerHTML = sportsSkeleton(6, 'row');
+    try {
+      if (t === 'standings') await renderStandings(body, sp);
+      if (t === 'stats') await renderStats(body, sp);
+      if (t === 'leaders') await renderLeaders(body, sp);
+      if (t === 'games') await renderGames(body, sp);
+    } catch (e) {
+      if (sp === sport && t === tab) body.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="list-ordered"></span></div><p>Couldn’t load this right now.</p><p>${sp === 'ncaab' ? 'SEC basketball stats fill in once the season tips off in November.' : 'Check your connection and try again.'}</p></div>`;
+    }
+  }
+
+  async function renderStandings(body, sp) {
+    const entries = (await standings(sp)).slice();
+    if (sp !== sport || tab !== 'standings') return;
+    if (!entries.length) throw new Error('empty');
+    const favs = sportsFavIds(sp);
+    const num = (e, n) => { const x = (e.stats || []).find((s) => s.name === n); return x && x.value != null ? x.value : NaN; };
+    entries.sort((a, b) => (num(a, 'playoffSeed') || 99) - (num(b, 'playoffSeed') || 99) || (num(b, 'leagueWinPercent') || 0) - (num(a, 'leagueWinPercent') || 0));
+    const football = sp === 'ncaaf';
+    const cols = football
+      ? [['CONF', 'vsconf'], ['ALL', 'total'], ['HOME', 'homerecord'], ['AWAY', 'awayrecord'], ['vs TOP 25', 'vsaprankedteams'], ['PF', 'pointsFor'], ['PA', 'pointsAgainst'], ['STRK', 'streak']]
+      : [['CONF', 'vsconf'], ['ALL', 'total'], ['HOME', 'homerecord'], ['AWAY', 'awayrecord'], ['STRK', 'streak']];
+    const val = (e, key) => { const s = statOf(e, key); return s ? (s.summary || s.displayValue || '') : ''; };
+    body.innerHTML = `
+      <div class="tbl-card"><div class="tbl-wrap"><table class="sec">
+        <thead><tr><th>Team</th>${cols.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead>
+        <tbody>${entries.map((e, i) => {
+          const tm = e.team || {};
+          return `<tr class="${favs.has(String(tm.id)) ? 'fav' : ''}"><td><a href="${sportsTeamUrl(sp, tm.id)}"><span class="rk">${i + 1}</span>${sportsImg(sportsTeamLogo(tm))}<span>${esc(tm.shortDisplayName || tm.location || tm.abbreviation || '')}</span></a></td>${cols.map(([, k]) => `<td>${esc(val(e, k))}</td>`).join('')}</tr>`;
+        }).join('')}</tbody>
+      </table></div></div>
+      <p class="note">Sorted by conference standing. Tap a team for its schedule, roster and news. Your teams are highlighted.</p>`;
+  }
+
+  // ---------- Team stats: every SEC team side by side ----------
+  async function teamStats(sp) {
+    return once('ts-' + sp, async () => {
+      const ck = 'sec-stats-' + sp;
+      try {
+        const c = JSON.parse(localStorage.getItem(ck));
+        if (c && Date.now() - c.at < 3 * 3600 * 1000) return c.rows;
+      } catch (e) {}
+      const entries = await standings(sp);
+      const base = sportsBase(sp);
+      const rows = await Promise.all(entries.map(async (e) => {
+        const tm = e.team || {};
+        try {
+          const d = await sportsGetJson(`${base}/teams/${encodeURIComponent(tm.id)}/statistics`);
+          const flat = (block) => {
+            const out = {};
+            (((block || {}).stats || block || {}).categories || []).forEach((c) => (c.stats || []).forEach((s) => {
+              const k = c.name + '.' + s.name;
+              out[k] = { v: s.value, d: s.displayValue };
+              if (!(s.name in out)) out[s.name] = { v: s.value, d: s.displayValue };
+            }));
+            return out;
+          };
+          const r = d.results || {};
+          const oppBlock = Array.isArray(r.opponent) ? { categories: r.opponent } : r.opponent;
+          return { team: { id: tm.id, name: tm.shortDisplayName || tm.location || tm.abbreviation, logo: sportsTeamLogo(tm) }, team_s: flat(r.stats || r), opp_s: flat(oppBlock) };
+        } catch (err) {
+          return { team: { id: tm.id, name: tm.shortDisplayName || tm.location || tm.abbreviation, logo: sportsTeamLogo(tm) }, team_s: {}, opp_s: {} };
+        }
+      }));
+      try { localStorage.setItem(ck, JSON.stringify({ at: Date.now(), rows })); } catch (e) {}
+      return rows;
+    });
+  }
+
+  function cell(row, col) {
+    const [, block, names, , cat] = col;
+    const src = block === 'opp' ? row.opp_s : row.team_s;
+    for (const n of names) {
+      const hit = (cat && src[cat + '.' + n]) || src[n];
+      if (hit && hit.v != null && !isNaN(hit.v)) return hit;
+    }
+    return null;
+  }
+
+  async function renderStats(body, sp) {
+    const rows = await teamStats(sp);
+    if (sp !== sport || tab !== 'stats') return;
+    const cols = STAT_COLS[sp].filter((c) => rows.some((r) => cell(r, c)));
+    if (!cols.length) throw new Error('no stats');
+    const st = sortState[sp] = sortState[sp] || { col: 0, desc: true };
+    if (st.col >= cols.length) st.col = 0;
+    const sc = cols[st.col];
+    const sorted = rows.slice().sort((a, b) => {
+      const av = cell(a, sc), bv = cell(b, sc);
+      if (!av) return 1; if (!bv) return -1;
+      return st.desc ? bv.v - av.v : av.v - bv.v;
+    });
+    // best / worst per column
+    const extremes = cols.map((c) => {
+      const vals = rows.map((r) => cell(r, c)).filter(Boolean).map((x) => x.v);
+      if (vals.length < 3) return {};
+      const hi = Math.max(...vals), lo = Math.min(...vals);
+      return c[3] ? { best: hi, worst: lo } : { best: lo, worst: hi };
+    });
+    const favs = sportsFavIds(sp);
+    body.innerHTML = `
+      <div class="tbl-card"><div class="tbl-wrap"><table class="sec">
+        <thead><tr><th>Team</th>${cols.map((c, i) => `<th class="sortable ${i === st.col ? 'sorted' : ''}" data-i="${i}">${esc(c[0])}${i === st.col ? (st.desc ? ' ▾' : ' ▴') : ''}</th>`).join('')}</tr></thead>
+        <tbody>${sorted.map((r, i) => `<tr class="${favs.has(String(r.team.id)) ? 'fav' : ''}"><td><a href="${sportsTeamUrl(sp, r.team.id)}"><span class="rk">${i + 1}</span>${sportsImg(r.team.logo)}<span>${esc(r.team.name)}</span></a></td>${cols.map((c, ci) => {
+          const x = cell(r, c);
+          const ex = extremes[ci];
+          const cls = x && ex.best === x.v ? 'best' : x && ex.worst === x.v ? 'worst' : '';
+          return `<td class="${cls}">${esc(x ? x.d : '—')}</td>`;
+        }).join('')}</tr>`).join('')}</tbody>
+      </table></div></div>
+      <p class="note">Season stats from ESPN. Tap a column to sort. <span style="color:var(--success)">Green</span> = best in the SEC, <span style="color:var(--danger)">red</span> = last.</p>`;
+    body.querySelectorAll('th.sortable').forEach((th) => th.addEventListener('click', () => {
+      const i = +th.dataset.i;
+      if (st.col === i) st.desc = !st.desc; else { st.col = i; st.desc = cols[i][3]; }
+      renderStats(body, sp);
+    }));
+  }
+
+  async function renderLeaders(body, sp) {
+    const cats = await once('ld-' + sp, () => sportsLoadLeaders(sp, SEC_GROUP[sp]));
+    if (sp !== sport || tab !== 'leaders') return;
+    leaderState[sp] = leaderState[sp] || {};
+    sportsRenderLeaders(body, sp, cats, leaderState[sp], 20);
+  }
+
+  async function renderGames(body, sp) {
+    const data = await once('gm-' + sp, () => sportsGetJson(`${sportsBase(sp)}/scoreboard?groups=${SEC_GROUP[sp]}&limit=100`));
+    if (sp !== sport || tab !== 'games') return;
+    const events = data.events || [];
+    if (!events.length) { body.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="calendar-days"></span></div><p>No SEC games right now.</p></div>`; return; }
+    const favs = sportsFavIds(sp);
+    body.innerHTML = (data.week && data.week.number ? `<div class="note" style="margin:0 2px 10px">Week ${data.week.number}</div>` : '') + events.map((ev) => {
+      const comp = (ev.competitions || [])[0] || {};
+      const cs = comp.competitors || [];
+      const home = cs.find((c) => c.homeAway === 'home') || {}, away = cs.find((c) => c.homeAway === 'away') || {};
+      const st = (comp.status || ev.status || {}).type || {};
+      const hs = sportsScore(home.score), as = sportsScore(away.score);
+      const post = st.state === 'post';
+      const rank = (c) => c.curatedRank && c.curatedRank.current && c.curatedRank.current < 99 ? `<small>${c.curatedRank.current}</small>` : '';
+      const row = (c, sc, other) => `<div class="g-row ${post && parseFloat(sc) < parseFloat(other) ? 'lose' : ''}">${sportsImg(sportsTeamLogo(c.team))}<span class="n">${favs.has(String(c.team && c.team.id)) ? '<span class="fav-badge">★</span>' : ''}${rank(c)}${esc((c.team && (c.team.shortDisplayName || c.team.displayName)) || '')}</span><span class="s">${st.state === 'pre' ? '' : esc(sc)}</span></div>`;
+      const title = `${(away.team || {}).abbreviation} @ ${(home.team || {}).abbreviation}`;
+      return `<a class="g-card" href="sports.html?league=${sp}&game=${encodeURIComponent(ev.id)}&title=${encodeURIComponent(title)}">
+        ${row(away, as, hs)}${row(home, hs, as)}
+        <div class="g-st ${st.state === 'in' ? 'live' : ''}"><span>${esc(st.shortDetail || '')}</span>${st.state !== 'post' ? sportsTvBadge(sportsTv(comp)) : ''}</div>
+      </a>`;
+    }).join('');
+  }
+
+  render();
+</script>
+</body>
+</html>

@@ -77,7 +77,7 @@ const TOOLKIT_GROUPS = {
 const TOOLKIT_PAGES = {
   'sports.html': ['sports', 'goal'], 'highlights.html': ['sports', 'clapperboard'], 'pickem.html': ['sports', 'target'],
   'trivia.html': ['sports', 'brain'], 'players.html': ['sports', 'user-search'], 'fantasy.html': ['sports', 'trophy'],
-  'standings.html': ['sports', 'list-ordered'], 'news.html': ['sports', 'newspaper'], 'team.html': ['sports', 'goal'],
+  'standings.html': ['sports', 'list-ordered'], 'leaders.html': ['sports', 'medal'], 'sec.html': ['sports', 'shield'], 'news.html': ['sports', 'newspaper'], 'team.html': ['sports', 'goal'],
   'family.html': ['family', 'users'], 'family-calendar.html': ['family', 'calendar-days'], 'family-tasks.html': ['family', 'list-checks'],
   'family-list.html': ['family', 'shopping-basket'], 'birthdays.html': ['family', 'cake'],
   'pantry.html': ['kitchen', 'package'], 'shopping-list.html': ['kitchen', 'shopping-cart'], 'meal-picker.html': ['kitchen', 'utensils'],

@@ -94,6 +94,40 @@ function sportsTvBadge(tv) {
   return tv ? `<span class="tv-badge">${toolkitEscapeHtml(tv)}</span>` : '';
 }
 
+// ---------- League leaders (shared by Leaders page and SEC hub) ----------
+const SPORTS_API_SITE_V3 = 'https://site.web.api.espn.com/apis/site/v3/sports';
+
+async function sportsLoadLeaders(leagueKey, group) {
+  const L = SPORTS_LEAGUES[leagueKey];
+  const data = await sportsGetJson(`${SPORTS_API_SITE_V3}/${L.sport}/${L.league}/leaders${group ? '?group=' + group : ''}`);
+  const cats = (data.leaders && data.leaders.categories) || data.categories || [];
+  return cats.filter((c) => (c.leaders || []).length);
+}
+
+// Category chips + a top-N list; calls back so the page can re-render on chip taps
+function sportsRenderLeaders(host, leagueKey, cats, state, limit) {
+  const e = toolkitEscapeHtml;
+  if (!cats.length) { host.innerHTML = `<div class="empty-state"><div class="empty-icon"><span data-icon="trophy"></span></div><p>No leaders posted yet.</p><p>Check back once the season is underway.</p></div>`; return; }
+  if (!cats.some((c) => c.name === state.cat)) state.cat = cats[0].name;
+  const cat = cats.find((c) => c.name === state.cat);
+  const L = SPORTS_LEAGUES[leagueKey];
+  host.innerHTML = `
+    <div class="ldr-cats">${cats.map((c) => `<button data-c="${e(c.name)}" class="${c.name === state.cat ? 'on' : ''}">${e(c.displayName || c.name)}</button>`).join('')}</div>
+    <div class="ldr-list">${(cat.leaders || []).slice(0, limit || 15).map((l, i) => {
+      const a = l.athlete || {}, t = l.team || {};
+      const logo = t.logo || (t.logos && t.logos[0] && t.logos[0].href) || '';
+      const head = a.headshot && (a.headshot.href || a.headshot);
+      const href = a.id ? `players.html?sport=${encodeURIComponent(L.sport)}&league=${encodeURIComponent(L.league)}&id=${encodeURIComponent(a.id)}` : '#';
+      return `<a class="ldr-row ${i < 3 ? 'top' : ''}" href="${href}">
+        <span class="rk">${i + 1}</span>
+        ${head ? sportsImg(head, 'hs') : '<span class="hs"></span>'}
+        <span class="nm"><b>${e(a.displayName || a.fullName || '')}</b><small>${logo ? sportsImg(logo, 'tl') : ''}${e([t.abbreviation, a.position && a.position.abbreviation].filter(Boolean).join(' · '))}</small></span>
+        <span class="val">${e(l.displayValue != null ? l.displayValue : l.value)}</span>
+      </a>`;
+    }).join('')}</div>`;
+  host.querySelectorAll('.ldr-cats button').forEach((b) => b.addEventListener('click', () => { state.cat = b.dataset.c; sportsRenderLeaders(host, leagueKey, cats, state, limit); }));
+}
+
 // ---------- Favorite teams (this device only) ----------
 const SPORTS_FAV_KEY = 'toolkit-fav-teams';
 
@@ -126,6 +160,8 @@ function sportsRenderNav(active) {
   const items = [
     ['scores', 'Scores', 'sports.html'],
     ['standings', 'Standings', 'standings.html'],
+    ['leaders', 'Leaders', 'leaders.html'],
+    ['sec', 'SEC', 'sec.html'],
     ['players', 'Players', 'players.html'],
     ['news', 'News', 'news.html'],
     ['highlights', 'Highlights', 'highlights.html'],
@@ -279,6 +315,20 @@ function sportsOpenTeamPicker(onDone) {
   .star { background: none; border: 0; font-size: 1.3rem; color: var(--text-muted); cursor: pointer; padding: 2px 6px; }
   .star.on { color: var(--accent); }
   .fav-badge { color: var(--accent); font-size: 0.8rem; margin-right: 2px; }
+  .ldr-cats { display: flex; gap: 6px; overflow-x: auto; margin: 0 -18px 12px; padding: 0 18px 2px; scrollbar-width: none; }
+  .ldr-cats::-webkit-scrollbar { display: none; }
+  .ldr-cats button { flex-shrink: 0; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 0.76rem; cursor: pointer; }
+  .ldr-cats button.on { background: var(--primary); color: #fff; border-color: transparent; }
+  .ldr-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 7px; text-decoration: none; color: var(--text); }
+  .ldr-row .rk { width: 22px; text-align: center; font-family: var(--font-display); font-weight: 800; color: var(--text-muted); }
+  .ldr-row.top .rk { color: var(--accent); }
+  .ldr-row .hs { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: var(--surface-2); flex-shrink: 0; }
+  .ldr-row .nm { flex: 1; min-width: 0; }
+  .ldr-row .nm b { display: block; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ldr-row .nm small { display: flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 0.72rem; margin-top: 2px; }
+  .ldr-row .tl { width: 16px; height: 16px; object-fit: contain; }
+  .ldr-row .val { font-family: var(--font-mono); font-weight: 800; font-size: 1.02rem; }
+  .ldr-row.top:first-of-type { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
   .tv-badge { display: inline-block; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); vertical-align: 1px; white-space: nowrap; }
   `;
   const style = document.createElement('style');

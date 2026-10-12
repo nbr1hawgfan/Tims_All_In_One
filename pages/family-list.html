@@ -124,7 +124,7 @@
     busy++;
     try {
       const r = await familyApi(action, extra);
-      items = r.items; saveCache();
+      items = Array.isArray(r.items) ? r.items : items; saveCache();
       if (r.skipped) toolkitToast(`${r.skipped} already on the list`);
       setSync(true);
     } catch (e) {
@@ -148,7 +148,7 @@
     try {
       const r = await familyApi('listGet');
       if (busy) return;
-      items = r.items; saveCache(); setSync(true); render();
+      items = Array.isArray(r.items) ? r.items : items; saveCache(); setSync(true); render();
     } catch (e) {
       if (familyIsAuthError(e.message)) return start();
       setSync(false);

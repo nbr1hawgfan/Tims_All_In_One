@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>League Leaders — Jennings Hub</title>
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Jennings Hub">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/boot.js"></script>
+</head>
+<body data-sw-path="../sw.js">
+
+<header class="app-header">
+  <a href="sports.html" class="back-link" aria-label="Back">←</a>
+  <div><h1>League Leaders</h1></div>
+</header>
+
+<main class="shell">
+  <div id="nav-slot"></div>
+  <div class="league-tabs" id="league-tabs">
+    <button data-league="nfl">NFL</button>
+    <button data-league="nba">NBA</button>
+    <button data-league="mlb">MLB</button>
+    <button data-league="ncaaf">CFB</button>
+    <button data-league="ncaab">CBB</button>
+  </div>
+  <div id="body"></div>
+  <p class="helper-text" style="text-align:center;margin-top:12px">Season leaders from ESPN. Tap a player for their full profile.</p>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/icons.js"></script>
+<script src="../js/sports-common.js"></script>
+<script>
+  document.getElementById('nav-slot').replaceWith(sportsRenderNav('leaders'));
+  const TAB_KEY = 'leaders-last-tab';
+  let league;
+  try { league = localStorage.getItem(TAB_KEY); } catch (e) {}
+  if (!SPORTS_LEAGUES[league]) { const f = sportsGetFavs()[0]; league = f ? f.league : 'nfl'; }
+  const state = {};   // league → { cat }
+  const cache = {};
+
+  function setTab() { document.querySelectorAll('#league-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.league === league)); }
+  document.querySelectorAll('#league-tabs button').forEach((b) => b.addEventListener('click', () => {
+    league = b.dataset.league;
+    try { localStorage.setItem(TAB_KEY, league); } catch (e) {}
+    setTab(); load();
+  }));
+  setTab();
+
+  async function load() {
+    const body = document.getElementById('body');
+    const lk = league;
+    body.innerHTML = sportsSkeleton(6, 'row');
+    try {
+      if (!cache[lk]) cache[lk] = await sportsLoadLeaders(lk);
+      if (lk !== league) return;
+      state[lk] = state[lk] || {};
+      sportsRenderLeaders(body, lk, cache[lk], state[lk], 25);
+    } catch (e) {
+      if (lk === league) body.innerHTML = `<div class="empty-state"><p>Couldn’t load leaders — check your connection.</p></div>`;
+    }
+  }
+  load();
+</script>
+</body>
+</html>
